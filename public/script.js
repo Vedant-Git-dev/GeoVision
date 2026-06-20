@@ -1,12 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize sleek, animated date pickers
     flatpickr("#before_date", {
         dateFormat: "Y-m-d",
         altInput: true,
         altFormat: "F j, Y",
         animate: true
     });
-    
+
     flatpickr("#after_date", {
         dateFormat: "Y-m-d",
         altInput: true,
@@ -21,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         btnGenerate.classList.add('loading');
         mapOverlay.classList.add('active');
         btnGenerate.disabled = true;
@@ -38,25 +37,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            
+
             const result = await response.json();
+            console.log('Generate result:', result);
+
             if (result.success && result.map_url) {
-                iframe.src = result.map_url;
+                // Store config FIRST, then navigate iframe
+                if (result.config) {
+                    // Add timestamp to ensure iframe reads fresh data
+                    result.config._timestamp = Date.now();
+                    localStorage.setItem('geovision_map_config', JSON.stringify(result.config));
+                    console.log('Config stored in localStorage, timestamp:', result.config._timestamp);
+                }
+
+                // Reset iframe src to trigger reload with new localStorage
+                iframe.src = 'about:blank';
+                setTimeout(() => {
+                    iframe.src = result.map_url;
+                }, 50);
+
                 iframe.onload = () => {
+                    console.log('Iframe loaded');
                     mapOverlay.classList.remove('active');
                     btnGenerate.classList.remove('loading');
                     btnGenerate.disabled = false;
                 };
             } else {
-                alert("Error generating map: " + (result.error || "Unknown error"));
+                alert("Error: " + (result.error || "Unknown error"));
                 mapOverlay.classList.remove('active');
                 btnGenerate.classList.remove('loading');
                 btnGenerate.disabled = false;
             }
         } catch (error) {
-            console.error("Failed to fetch map:", error);
-            // Fallback if not running through flask
-            alert("Could not connect to the backend server.\n\nMake sure you have started the application using 'python app.py' instead of just opening the HTML file directly.");
+            console.error("Failed:", error);
+            alert("Could not connect to the backend server.");
             mapOverlay.classList.remove('active');
             btnGenerate.classList.remove('loading');
             btnGenerate.disabled = false;

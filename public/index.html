@@ -38,6 +38,24 @@
                     </div>
                 </div>
 
+                <section class="comparison-panel" aria-labelledby="comparison-heading">
+                    <div class="comparison-panel__header">
+                        <div>
+                            <p class="comparison-panel__eyebrow">Compare imagery</p>
+                            <h2 id="comparison-heading">Drag the divider on the map</h2>
+                        </div>
+                        <span class="comparison-panel__hint">The split line now lives on the map itself.</span>
+                    </div>
+
+                    <label class="toggle-row" for="change-mask-toggle">
+                        <input type="checkbox" id="change-mask-toggle" checked>
+                        <span>
+                            <strong>Show change mask</strong>
+                            <small>Highlights transitions such as forest to urban, water to urban, and more.</small>
+                        </span>
+                    </label>
+                </section>
+
                 <button type="submit" class="btn-primary" id="generate-btn">
                     <span class="btn-text">Generate Map</span>
                     <span class="loader"></span>

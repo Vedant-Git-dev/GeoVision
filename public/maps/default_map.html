@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoVision Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; background: #1a1a2e; }
+        #map-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+        .map-panel {
+            flex: 1;
+            position: relative;
+        }
+        .map-panel .leaflet-container {
+            width: 100%;
+            height: 100%;
+        }
+        .map-label {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 20px;
+            background: rgba(26, 26, 46, 0.9);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 20px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        .map-label::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid rgba(26, 26, 46, 0.9);
+        }
+        .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1100;
+            background: rgba(255,255,255,0.95);
+            padding: 32px 48px;
+            border-radius: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .empty-state h2 { margin: 0 0 8px; color: #1a1a2e; font-size: 20px; }
+        .empty-state p { margin: 0; color: #666; font-size: 14px; }
+        .empty-state .icon { font-size: 36px; margin-bottom: 12px; }
+        .divider {
+            width: 4px;
+            background: #0071e3;
+            z-index: 999;
+            box-shadow: 0 0 10px rgba(0,113,227,0.5);
+        }
+        .controls {
+            position: absolute;
+            top: 55px;
+            left: 10px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 8px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 12px;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            padding: 8px;
+        }
+        .controls label {
+            display: block;
+            margin: 4px 0;
+            cursor: pointer;
+        }
+        .controls input { margin-right: 6px; }
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 10px;
+            padding: 12px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 10px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 11px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            display: none;
+        }
+        .legend.show { display: block; }
+        .legend h4 { margin: 0 0 8px; font-size: 12px; font-weight: 600; }
+        .legend-item { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+        .legend-color { width: 14px; height: 14px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="empty-state" id="empty-state">
+        <div class="icon">🛰️</div>
+        <h2>No Map Generated Yet</h2>
+        <p>Select a location and date range in the sidebar,<br>then click <strong>Generate Map</strong>.</p>
+    </div>
+
+    <div id="map-container" style="display: none;">
+        <div class="map-panel" id="before-panel">
+            <div class="map-label" id="label-before">Before</div>
+            <div class="controls">
+                <label><input type="radio" name="before-view" value="satellite" checked> Satellite Only</label>
+                <label><input type="radio" name="before-view" value="sentinel"> Sentinel-2 Only</label>
+                <label><input type="radio" name="before-view" value="blend"> Blend (Sat + S2)</label>
+                <hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">
+                <label><input type="checkbox" id="toggle-mask"> Show Change Mask</label>
+            </div>
+            <div class="legend" id="legend-before">
+                <h4>Change Types</h4>
+                <div class="legend-item"><div class="legend-color" style="background:#f44336"></div>Forest → Urban</div>
+                <div class="legend-item"><div class="legend-color" style="background:#1976d2"></div>Water → Urban</div>
+                <div class="legend-item"><div class="legend-color" style="background:#00bcd4"></div>Urban → Water</div>
+                <div class="legend-item"><div class="legend-color" style="background:#a5d6a7"></div>Forest → Agriculture</div>
+                <div class="legend-item"><div class="legend-color" style="background:#d32f2f"></div>Agriculture → Urban</div>
+            </div>
+            <div id="map-before"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="map-panel" id="after-panel">
+            <div class="map-label" id="label-after">After</div>
+            <div class="controls">
+                <label><input type="radio" name="after-view" value="satellite" checked> Satellite Only</label>
+                <label><input type="radio" name="after-view" value="sentinel"> Sentinel-2 Only</label>
+                <label><input type="radio" name="after-view" value="blend"> Blend (Sat + S2)</label>
+            </div>
+            <div id="map-after"></div>
+        </div>
+    </div>
+
+    <script>
+        var mapBefore = null;
+        var mapAfter = null;
+
+        var satLayer1, satLayer2;      // Base satellite
+        var s2Layer1, s2Layer2;        // Sentinel-2 composites
+        var maskLayer1, maskLayer2;    // Change mask
+
+        function initMaps(config) {
+            if (!config) return;
+
+            document.getElementById('empty-state').style.display = 'none';
+            document.getElementById('map-container').style.display = 'flex';
+
+            document.getElementById('label-before').textContent = 'Before: ' + config.before_label;
+            document.getElementById('label-after').textContent = 'After: ' + config.after_label;
+
+            var center = config.center || [18.52, 73.85];
+            var aoiStyle = {
+                color: '#ff6b00',
+                weight: 4,
+                fillColor: '#ff6b00',
+                fillOpacity: 0,
+                dashArray: '0'
+            };
+
+            // Before map
+            mapBefore = L.map('map-before', {
+                center: center,
+                zoom: 13,
+                zoomControl: true
+            });
+
+            satLayer1 = L.tileLayer(
+                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                { maxZoom: 20, attribution: 'Esri', pane: 'tilePane' }
+            ).addTo(mapBefore);
+
+            s2Layer1 = L.tileLayer(config.before_tiles, {
+                maxZoom: 20,
+                opacity: 1,
+                attribution: 'Sentinel-2 Before',
+                pane: 'overlayPane'  // Put above satellite
+            });
+
+            // Change mask
+            if (config.change_mask_tiles) {
+                maskLayer1 = L.tileLayer(config.change_mask_tiles, {
+                    maxZoom: 20,
+                    opacity: 0.6,
+                    attribution: 'Change Mask',
+                    pane: 'overlayPane'
+                });
+            }
+
+            mapBefore.on('move', function() {
+                if (mapAfter) mapAfter.setView(mapBefore.getCenter(), mapBefore.getZoom());
+            });
+
+            // After map
+            mapAfter = L.map('map-after', {
+                center: center,
+                zoom: 13,
+                zoomControl: true
+            });
+
+            satLayer2 = L.tileLayer(
+                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                { maxZoom: 20, attribution: 'Esri', pane: 'tilePane' }
+            ).addTo(mapAfter);
+
+            s2Layer2 = L.tileLayer(config.after_tiles, {
+                maxZoom: 20,
+                opacity: 1,
+                attribution: 'Sentinel-2 After',
+                pane: 'overlayPane'
+            });
+
+            if (config.change_mask_tiles) {
+                maskLayer2 = L.tileLayer(config.change_mask_tiles, {
+                    maxZoom: 20,
+                    opacity: 0.6,
+                    attribution: 'Change Mask',
+                    pane: 'overlayPane'
+                });
+            }
+
+            mapAfter.on('move', function() {
+                if (mapBefore) mapBefore.setView(mapAfter.getCenter(), mapAfter.getZoom());
+            });
+
+            // AOI boundary
+            if (config.aoi) {
+                var aoiLayer1 = L.geoJSON({
+                    type: 'Feature',
+                    geometry: config.aoi
+                }, { style: aoiStyle }).addTo(mapBefore);
+
+                var aoiLayer2 = L.geoJSON({
+                    type: 'Feature',
+                    geometry: config.aoi
+                }, { style: aoiStyle }).addTo(mapAfter);
+
+                var bounds = aoiLayer1.getBounds();
+                mapBefore.fitBounds(bounds, { padding: [50, 50] });
+                mapAfter.fitBounds(bounds, { padding: [50, 50] });
+            }
+
+            // View toggles for Before panel
+            document.querySelectorAll('input[name="before-view"]').forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    // Clear all layers
+                    if (mapBefore.hasLayer(satLayer1)) mapBefore.removeLayer(satLayer1);
+                    if (mapBefore.hasLayer(s2Layer1)) mapBefore.removeLayer(s2Layer1);
+                    if (mapBefore.hasLayer(maskLayer1)) mapBefore.removeLayer(maskLayer1);
+
+                    if (this.value === 'satellite') {
+                        satLayer1.addTo(mapBefore);
+                    } else if (this.value === 'sentinel') {
+                        s2Layer1.addTo(mapBefore);
+                    } else if (this.value === 'blend') {
+                        satLayer1.addTo(mapBefore);
+                        s2Layer1.addTo(mapBefore);
+                    }
+
+                    // Re-add mask if checked
+                    if (document.getElementById('toggle-mask').checked && maskLayer1) {
+                        maskLayer1.addTo(mapBefore);
+                    }
+                });
+            });
+
+            // View toggles for After panel
+            document.querySelectorAll('input[name="after-view"]').forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    if (mapAfter.hasLayer(satLayer2)) mapAfter.removeLayer(satLayer2);
+                    if (mapAfter.hasLayer(s2Layer2)) mapAfter.removeLayer(s2Layer2);
+                    if (mapAfter.hasLayer(maskLayer2)) mapAfter.removeLayer(maskLayer2);
+
+                    if (this.value === 'satellite') {
+                        satLayer2.addTo(mapAfter);
+                    } else if (this.value === 'sentinel') {
+                        s2Layer2.addTo(mapAfter);
+                    } else if (this.value === 'blend') {
+                        satLayer2.addTo(mapAfter);
+                        s2Layer2.addTo(mapAfter);
+                    }
+                });
+            });
+
+            // Change mask toggle
+            document.getElementById('toggle-mask').addEventListener('change', function(e) {
+                if (e.target.checked) {
+                    if (maskLayer1) maskLayer1.addTo(mapBefore);
+                    if (maskLayer2) maskLayer2.addTo(mapAfter);
+                    document.getElementById('legend-before').classList.add('show');
+                } else {
+                    if (maskLayer1) mapBefore.removeLayer(maskLayer1);
+                    if (maskLayer2) mapAfter.removeLayer(maskLayer2);
+                    document.getElementById('legend-before').classList.remove('show');
+                }
+            });
+        }
+
+        var configStr = localStorage.getItem('geovision_map_config');
+        if (configStr) {
+            localStorage.removeItem('geovision_map_config');
+            try {
+                var config = JSON.parse(configStr);
+                initMaps(config);
+            } catch (e) {
+                console.error('Parse error:', e);
+            }
+        }
+    </script>
+</body>
+</html>
