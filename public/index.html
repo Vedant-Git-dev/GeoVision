@@ -38,22 +38,22 @@
                     </div>
                 </div>
 
-                <section class="comparison-panel" aria-labelledby="comparison-heading">
-                    <div class="comparison-panel__header">
-                        <div>
-                            <p class="comparison-panel__eyebrow">Compare imagery</p>
-                            <h2 id="comparison-heading">Drag the divider on the map</h2>
-                        </div>
-                        <span class="comparison-panel__hint">The split line now lives on the map itself.</span>
-                    </div>
-
-                    <label class="toggle-row" for="change-mask-toggle">
-                        <input type="checkbox" id="change-mask-toggle" checked>
-                        <span>
-                            <strong>Show change mask</strong>
-                            <small>Highlights transitions such as forest to urban, water to urban, and more.</small>
-                        </span>
-                    </label>
+                <section class="legend-panel">
+                    <p class="legend-panel__eyebrow">Change Legend</p>
+                    <ul class="legend-list">
+                        <li><span class="legend-swatch" style="background:#f44336"></span>Forest → Urban</li>
+                        <li><span class="legend-swatch" style="background:#1976d2"></span>Water → Urban</li>
+                        <li><span class="legend-swatch" style="background:#00bcd4"></span>Urban → Water</li>
+                        <li><span class="legend-swatch" style="background:#a5d6a7"></span>Forest → Agriculture</li>
+                        <li><span class="legend-swatch" style="background:#d32f2f"></span>Agriculture → Urban</li>
+                        <li><span class="legend-swatch" style="background:#795548"></span>Bare → Urban</li>
+                        <li><span class="legend-swatch" style="background:#009688"></span>Urban → Forest</li>
+                        <li><span class="legend-swatch" style="background:#1e88e5"></span>Water → Forest</li>
+                        <li><span class="legend-swatch" style="background:#388e3c"></span>Agriculture → Forest</li>
+                        <li><span class="legend-swatch" style="background:#81c784"></span>Forest → Bare soil</li>
+                        <li><span class="legend-swatch" style="background:#4fc3f7"></span>Water → Agriculture</li>
+                        <li><span class="legend-swatch" style="background:#ff9800"></span>Urban → Agriculture</li>
+                    </ul>
                 </section>
 
                 <button type="submit" class="btn-primary" id="generate-btn">

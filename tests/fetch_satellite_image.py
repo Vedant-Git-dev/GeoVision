@@ -42,11 +42,11 @@ _CHANGE_TRANSITIONS = [
     (6, 0, "Urban -> Water", "00bcd4"),
     (1, 4, "Forest -> Agriculture", "a5d6a7"),
     (4, 6, "Agriculture -> Urban", "d32f2f"),
-    (7, 6, "Bare -> Urban", "795548"),
+    (3, 6, "Bare -> Urban", "795548"),
     (6, 1, "Urban -> Forest", "009688"),
     (0, 1, "Water -> Forest", "1e88e5"),
     (4, 1, "Agriculture -> Forest", "388e3c"),
-    (1, 7, "Forest -> Bare soil", "81c784"),
+    (1, 3, "Forest -> Bare soil", "81c784"),
     (0, 4, "Water -> Agriculture", "4fc3f7"),
     (6, 4, "Urban -> Agriculture", "ff9800"),
 ]
@@ -502,12 +502,16 @@ def compute_signature(features: ee.Image) -> ee.Image:
     Returns an image with class proportions + label.
     """
     # ---- Class intensity scores ----
-    veg_score = features.select("NDVI_mean").abs()
-    built_score = features.select("NDBI_mean").abs()
-    water_score = features.select("NDWI_mean").abs()
-    bare_score = features.select("BSI_mean").abs()
+    # Indices are signed: a class only scores where its index is POSITIVE.
+    # Do NOT use .abs() — that makes water/forest (strongly negative NDBI)
+    # look like built-up, causing bare→forest/water to flag as Forest→Urban.
+    zero = ee.Image.constant(0)
+    veg_score = features.select("NDVI_mean").max(zero)    # + only for vegetation
+    built_score = features.select("NDBI_mean").max(zero)  # + only for built-up
+    water_score = features.select("NDWI_mean").max(zero)  # + only for water
+    bare_score = features.select("BSI_mean").max(zero)    # + only for bare soil
     # Agriculture: bare_score moderate + higher veg texture variance (crop rows)
-    agri_score = bare_score.multiply(features.select("NDVI_var").abs().add(0.01))
+    agri_score = bare_score.multiply(features.select("NDVI_var").add(0.01))
 
     # ---- Normalize to class proportions ----
     total = veg_score.add(built_score).add(water_score).add(bare_score).add(agri_score)
@@ -566,6 +570,23 @@ _LABEL_NAMES = {
     6: "Urban",
 }
 
+# Per-class proportion band produced by compute_signature.
+# Used to gate transitions: a flip only counts if BOTH the old class (before)
+# and the new class (after) are decisively dominant — marginal, noise-driven
+# relabels are rejected so unchanged ground is not flagged.
+_CLASS_PROP_BAND = {
+    0: "water_prop",
+    1: "forest_prop",
+    3: "bare_prop",
+    4: "agri_prop",
+    6: "urban_prop",
+}
+
+# Minimum class proportion for a label to be trusted as a real transition
+# endpoint. 0 = trust every label flip (noisy); higher = fewer false positives
+# but more missed changes on mixed pixels. 0.35 = clear majority required.
+_MIN_CLASS_CONF = 0.35
+
 
 def detect_changes(image_a: ee.Image, image_b: ee.Image) -> ee.Image:
     """Detect land cover changes via neighborhood signatures + rule engine.
@@ -594,8 +615,19 @@ def detect_changes(image_a: ee.Image, image_b: ee.Image) -> ee.Image:
 
     change = label_a.multiply(0).rename("change").toInt16()
 
+    # Confidence gate: only flag a transition where the OLD class was
+    # decisively present before AND the NEW class is decisively present after.
+    # This kills false positives from marginal, noise-driven relabels on
+    # unchanged ground (season/illumination/composite differences).
     for code, (from_cls, to_cls, label, color) in enumerate(_CHANGE_TRANSITIONS, start=1):
-        mask = label_a.eq(from_cls).And(label_b.eq(to_cls))
+        conf_a = sig_a.select(_CLASS_PROP_BAND[from_cls])
+        conf_b = sig_b.select(_CLASS_PROP_BAND[to_cls])
+        mask = (
+            label_a.eq(from_cls)
+            .And(label_b.eq(to_cls))
+            .And(conf_a.gte(_MIN_CLASS_CONF))
+            .And(conf_b.gte(_MIN_CLASS_CONF))
+        )
         change = change.where(mask, code)
 
     change = change.updateMask(change.neq(0))
