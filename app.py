@@ -3,7 +3,6 @@ log = logging.getLogger(__name__)
 
 import os
 import sys
-import json
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -52,68 +51,43 @@ def generate():
         after_date = data.get('after_date', '2024-11-01')
 
         if fetcher is None:
-            return jsonify({
-                "success": False,
-                "error": "GEE modules not installed"
-            })
+            return jsonify({"success": False, "error": "GEE modules not installed"})
 
         def get_window(date_str):
             start = datetime.strptime(date_str, "%Y-%m-%d")
-            end = start + timedelta(days=180)
+            # Use a decent seasonal window so median composites are stable
+            end = start + timedelta(days=90)
             return start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
 
         start1, end1 = get_window(before_date)
         start2, end2 = get_window(after_date)
 
-        year1 = datetime.strptime(before_date, "%Y-%m-%d").year
-        year2 = datetime.strptime(after_date, "%Y-%m-%d").year
+        fetcher.init_ee(os.getenv("EE_PROJECT_ID"))
 
-        project = os.getenv("EE_PROJECT_ID")
+        loc = fetcher.resolve_location(location_query, 18.5936, 73.7301, location_query)
+        aoi = ee.Geometry.Point([loc.lon, loc.lat]).buffer(10000)
 
-        # Use fetcher's init_ee which handles authentication
-        fetcher.init_ee(project)
+        log.info("Building composite 1 (%s -> %s)...", start1, end1)
+        image1 = fetcher._build_composite(aoi, fetcher.DateRange(start1, end1), "Timeline 1")
 
-        cfg = fetcher.Config(
-            location=fetcher.resolve_location(location_query, 18.5936, 73.7301, location_query),
-            buffer_m=10000,
-            timeline1=fetcher.DateRange(start1, end1),
-            timeline2=fetcher.DateRange(start2, end2),
-            project=project,
-            output="maps/default_map.html"
-        )
+        log.info("Building composite 2 (%s -> %s)...", start2, end2)
+        image2 = fetcher._build_composite(aoi, fetcher.DateRange(start2, end2), "Timeline 2")
 
-        loc = cfg.location
-        aoi = ee.Geometry.Point([loc.lon, loc.lat]).buffer(cfg.buffer_m)
-
-        log.info("Building composite 1...")
-        image1 = fetcher._build_composite(aoi, cfg.timeline1, "Timeline 1")
-
-        log.info("Building composite 2...")
-        image2 = fetcher._build_composite(aoi, cfg.timeline2, "Timeline 2")
-
-        log.info("Getting tile URLs...")
         vis_params = {"bands": ["B4", "B3", "B2"], "min": 0, "max": 3000}
-
         map_id1 = image1.getMapId(vis_params)
         map_id2 = image2.getMapId(vis_params)
-
         tile1_url = map_id1["tile_fetcher"].url_format
         tile2_url = map_id2["tile_fetcher"].url_format
 
-        log.info("Tile1: %s...", tile1_url[:80])
-        log.info("Tile2: %s...", tile2_url[:80])
-
-        classified1 = fetcher.get_classified_image(year1, aoi)
-        classified2 = fetcher.get_classified_image(year2, aoi)
-
-        change_img = fetcher.detect_changes(classified1, classified2)
+        log.info("Detecting changes via neighborhood signatures...")
+        change_img = fetcher.detect_changes(image1, image2)
         change_vis = fetcher.get_change_vis_params()
         change_map_id = change_img.getMapId(change_vis)
         change_mask_url = change_map_id["tile_fetcher"].url_format
 
-        aoi_info = aoi.getInfo()
+        log.info("Generated map config for: %s", location_query)
 
-        result = {
+        return jsonify({
             "success": True,
             "map_url": "maps/default_map.html",
             "config": {
@@ -123,11 +97,9 @@ def generate():
                 "change_mask_tiles": change_mask_url,
                 "before_label": before_date,
                 "after_label": after_date,
-                "aoi": aoi_info
+                "aoi": aoi.getInfo()
             }
-        }
-        log.info("Generated map config for: %s", location_query)
-        return jsonify(result)
+        })
     except Exception as e:
         log.error("Error: %s", str(e))
         import traceback
