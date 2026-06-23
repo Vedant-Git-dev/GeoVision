@@ -79,8 +79,10 @@ def generate():
         tile1_url = map_id1["tile_fetcher"].url_format
         tile2_url = map_id2["tile_fetcher"].url_format
 
-        log.info("Detecting changes via neighborhood signatures...")
-        change_img = fetcher.detect_changes(image1, image2)
+        log.info("Detecting changes via Dynamic World signatures...")
+        dw1 = fetcher._build_dw_composite(aoi, fetcher.DateRange(start1, end1), "Timeline 1")
+        dw2 = fetcher._build_dw_composite(aoi, fetcher.DateRange(start2, end2), "Timeline 2")
+        change_img = fetcher.detect_changes(dw1, dw2)
         change_vis = fetcher.get_change_vis_params()
         change_map_id = change_img.getMapId(change_vis)
         change_mask_url = change_map_id["tile_fetcher"].url_format

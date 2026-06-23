@@ -37,18 +37,12 @@ _CLOUD_PROB_THRESHOLD = 50
 _GEOCODER_USER_AGENT = "geovision/1.0"
 
 _CHANGE_TRANSITIONS = [
-    (1, 6, "Forest -> Urban", "f44336"),
-    (0, 6, "Water -> Urban", "1976d2"),
-    (6, 0, "Urban -> Water", "00bcd4"),
-    (1, 4, "Forest -> Agriculture", "a5d6a7"),
-    (4, 6, "Agriculture -> Urban", "d32f2f"),
-    (3, 6, "Bare -> Urban", "795548"),
-    (6, 1, "Urban -> Forest", "009688"),
-    (0, 1, "Water -> Forest", "1e88e5"),
-    (4, 1, "Agriculture -> Forest", "388e3c"),
-    (1, 3, "Forest -> Bare soil", "81c784"),
-    (0, 4, "Water -> Agriculture", "4fc3f7"),
-    (6, 4, "Urban -> Agriculture", "ff9800"),
+    (1, 6, "Forest → Urban", "f44336"),
+    (0, 6, "Water → Urban", "1976d2"),
+    (1, 0, "Forest → Water", "81c784"),
+    (6, 1, "Urban → Forest", "009688"),
+    (6, 0, "Urban → Water", "00bcd4"),
+    (0, 1, "Water → Forest", "1e88e5"),
 ]
 
 _MAP_DIVIDER_STYLE = """
@@ -288,277 +282,118 @@ def resolve_location(query, lat, lon, name) -> Location:
     return Location(name, lat, lon)
 
 
-"""Detect land cover changes via DIRECT spectral comparison.
-
-Instead of classifying each image and comparing labels (which is noisy),
-compare the actual band values and spectral indices between two dates.
-Real land-use change (urban expansion, deforestation, etc.) causes
-a large, consistent shift in spectral bands, while sensor/noise differences
-are much smaller and scattered.
-"""
-
-# Dynamic World class indices (from label band)
-_DW_CLASSES = {
-    "water": 0,
-    "trees": 1,
-    "grass": 2,
-    "flooded_vegetation": 3,
-    "crops": 4,
-    "shrub_and_scrub": 5,
-    "built": 6,
-    "bare": 7,
-    "snow_and_ice": 8,
-}
-
-_DW_LABEL_NAMES = [
-    "water", "trees", "grass", "flooded_vegetation", "crops",
-    "shrub_and_scrub", "built", "bare", "snow_and_ice"
+# Dynamic World probability band names (per-pixel class confidence from DL model)
+_DW_PROB_BANDS = [
+    "water", "trees", "grass", "flooded_vegetation",
+    "crops", "shrub_and_scrub", "built", "bare", "snow_and_ice",
 ]
 
-_MAJORITY_THRESH = 0.30  # Require at least 30% of scenes agreed on majority class
 
-def _dw_image_for_year(year, aoi, date_range) -> ee.Image:
-    """Build majority-voted land cover from Jan-Mar of the given year.
+def _build_dw_composite(aoi, date_range, label) -> ee.Image:
+    """Build a median composite of Dynamic World probability bands.
 
-    Returns an image with:
-    - 'label': majority-voted class (mode) across all scenes
-    - 'vote_pct': fraction of scenes that agreed on the majority class (0-1)
+    Queries the GOOGLE/DYNAMICWORLD/V1 collection for the given AOI
+    and date range, selects the 9 probability bands, and reduces via
+    median to get a stable per-pixel probability distribution.
+
+    Returns:
+        ee.Image with 9 probability bands (each in [0,1], but after
+        median compositing they may NOT sum to 1.0 — re-normalization
+        is done in _dw_to_signature).
     """
     col = (
         ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
         .filterBounds(aoi)
         .filterDate(date_range.start, date_range.end)
-        .select("label")
+        .select(_DW_PROB_BANDS)
     )
     n = col.size().getInfo()
     if n == 0:
-        log.warning("No Dynamic World for %s — blank.", date_range)
-        return ee.Image.constant(0).rename(["label", "vote_pct"]).clip(aoi)
-
-    log.info("Dynamic World %s: %d scenes — majority vote.", date_range, n)
-
-    # Mode (majority vote) across all scenes
-    mode_img = col.mode().clip(aoi)
-
-    # Count votes: for each class c, create a 0/1 mask of scenes labeled c, then sum
-    count_bands = []
-    for c in range(9):
-        # Binary mask: 1 where this scene had label c, else 0
-        mask = col.map(lambda img: img.eq(c).copyProperties(img, ["system:time_start"]))
-        count_bands.append(mask.sum())
-    votes_img = ee.Image.cat(count_bands).rename(_DW_LABEL_NAMES)
-
-    # Fraction of scenes that agreed on the majority class
-    total_scenes = ee.Image(n).float()
-    majority_pct = votes_img.reduce(ee.Reducer.max()).divide(total_scenes).rename("vote_pct")
-
-    return mode_img.addBands(majority_pct)
+        raise RuntimeError(
+            f"No Dynamic World scenes for '{label}'. "
+            "Widen your date range or check the AOI."
+        )
+    log.info("[DW %s] %d scenes — median probability.", label, n)
+    return col.median().clip(aoi)
 
 
-def get_classified_image(year, aoi, date_range) -> ee.Image:
-    """Fetch Dynamic World imagery for Jan-Mar of the given year to match seasonal window."""
-    return _dw_image_for_year(year, aoi, date_range)
+def _dw_to_signature(dw_image: ee.Image) -> ee.Image:
+    """Map 9-band DW probability image to the 5-class signature schema.
 
+    Band mapping (raw DW probabilities, NO re-normalization):
+        forest_prop = dw_image "trees"
+        urban_prop  = dw_image "built"
+        water_prop  = dw_image "water"
+        bare_prop   = dw_image "bare"
+        agri_prop   = dw_image "crops" + "shrub_and_scrub"
 
-# ---------------------------------------------------------------------------
-# Spectral indices (Step 2 of neighborhood approach)
-# ---------------------------------------------------------------------------
+    We use raw probabilities because re-normalizing inflates proportions
+    when dropped classes (grass, flooded_vegetation, snow_and_ice) hold
+    significant mass. A pixel with trees=0.35 and grass=0.30 would become
+    forest_prop=0.50 after normalization — passing the confidence gate
+    on what is actually a marginal, mixed pixel. Raw probabilities are
+    already well-calibrated by the DW model.
 
-def _spectral_indices(image: ee.Image) -> ee.Image:
-    """Compute 4 spectral indices per Step 2 of the neighborhood approach.
-
-    Required bands: B2(Blue), B3(Green), B4(Red), B8(NIR), B11(SWIR1), B12(SWIR2)
-
-    Indices:
-      NDVI = (NIR - Red) / (NIR + Red)              -> Vegetation
-      NDWI = (Green - NIR) / (Green + NIR)          -> Water
-      NDBI = (SWIR1 - NIR) / (SWIR1 + NIR)          -> Built-up
-      BSI  = (SWIR1 + SWIR2 - NIR - Red) / (SWIR1 + SWIR2 + NIR + Red)  -> Bare Soil
+    Returns:
+        ee.Image with bands: forest_prop, urban_prop, water_prop,
+        bare_prop, agri_prop, signature_label
     """
-    b2 = image.select("B2")
-    b3 = image.select("B3")
-    b4 = image.select("B4")
-    b8 = image.select("B8")
-    b11 = image.select("B11")
-    b12 = image.select("B12")
+    forest_prop = dw_image.select("trees").rename("forest_prop")
+    urban_prop = dw_image.select("built").rename("urban_prop")
+    water_prop = dw_image.select("water").rename("water_prop")
+    bare_prop = dw_image.select("bare").rename("bare_prop")
+    agri_prop = dw_image.select("crops").add(
+        dw_image.select("shrub_and_scrub")).rename("agri_prop")
 
-    ndvi = b8.subtract(b4).divide(b8.add(b4)).rename("NDVI")
-    ndwi = b3.subtract(b8).divide(b3.add(b8)).rename("NDWI")
-    ndbi = b11.subtract(b8).divide(b11.add(b8)).rename("NDBI")
-    # BSI: bare soil reflectance is high in SWIR, low in NIR and Red
-    bsi = b11.add(b12).subtract(b8).subtract(b4).divide(
-        b11.add(b12).add(b8).add(b4)).rename("BSI")
-
-    return image.addBands([ndvi, ndwi, ndbi, bsi])
-
-
-# ---------------------------------------------------------------------------
-# Feature extraction (Steps 3-4 of neighborhood approach)
-# ---------------------------------------------------------------------------
-
-_RAW_BANDS = ["B2", "B3", "B4", "B8", "B11", "B12"]
-_INDEX_BANDS = ["NDVI", "NDWI", "NDBI", "BSI"]
-_KERNEL: ee.Kernel | None = None  # lazy-initialized
-
-
-def _neighborhood_kernel() -> ee.Kernel:
-    global _KERNEL
-    if _KERNEL is None:
-        _KERNEL = ee.Kernel.circle(radius=1, units="pixels")
-    return _KERNEL
-
-
-def _neighborhood_stats(image: ee.Image) -> ee.Image:
-    """Compute 3×3 focal mean + stddev for all bands and indices.
-
-    No pixel is classified independently — every pixel uses neighborhood info.
-    """
-    all_bands = _RAW_BANDS + _INDEX_BANDS
-
-    result = image.select(all_bands).reduceNeighborhood(
-        ee.Reducer.mean(), _neighborhood_kernel())
-    result = result.select(
-        [f"{b}_mean" for b in all_bands]
-    ).rename([f"{b}_mean" for b in all_bands])
-
-    std = image.select(all_bands).reduceNeighborhood(
-        ee.Reducer.stdDev(), _neighborhood_kernel())
-    std = std.select(
-        [f"{b}_stdDev" for b in all_bands]
-    ).rename([f"{b}_std" for b in all_bands])
-
-    return image.addBands(result).addBands(std)
-
-
-def _texture_features(image: ee.Image) -> ee.Image:
-    """Compute texture features per Step 4.
-
-    Features: CoV (heterogeneity proxy), GLCM Contrast, GLCM Homogeneity.
-    These describe surface structure across the 3x3 neighborhood.
-
-    CoV (Coefficient of Variation) = std / |mean|
-      - High CoV = heterogeneous (urban, mixed agriculture)
-      - Low CoV = homogeneous (water, dense forest)
-    GLCM metrics capture spatial texture patterns on the reflectance band.
-    """
-    all_bands = _RAW_BANDS + _INDEX_BANDS
-
-    # Compute mean and stdDev separately (each preserves original band names)
-    mean_img = image.select(all_bands).reduceNeighborhood(
-        ee.Reducer.mean(), _neighborhood_kernel())
-    std_img = image.select(all_bands).reduceNeighborhood(
-        ee.Reducer.stdDev(), _neighborhood_kernel())
-
-    # Coefficient of variation = std / |mean| (proxy for entropy/heterogeneity)
-    _eps_img = ee.Image.constant(0.001)
-    cov_img = std_img.divide(mean_img.abs().add(_eps_img)).rename(
-        [f"{b}_var" for b in all_bands])
-
-    # GLCM on B4 (Red): requires int16 input, captures spatial heterogeneity
-    # (building density, crop rows, forest texture)
-    glcm = image.select("B4").int16().glcmTexture(size=3)
-    contrast = glcm.select("B4_contrast").rename("glcm_contrast")
-    homogeneity = glcm.select("B4_idm").rename("glcm_homogeneity")  # idm = Inverse Difference Moment = homogeneity
-
-    return image.addBands(cov_img).addBands(contrast).addBands(homogeneity)
-
-
-def build_feature_stack(image: ee.Image) -> ee.Image:
-    """Build the complete 24-feature image per Step 4.
-
-    Feature vector (24 dimensions):
-      - Raw Bands (12): B2-B12 × (mean, std)       [6 bands × 2 = 12]
-      - Indices (8):   NDVI/NDWI/NDBI/BSI × (mean, std) [4 × 2 = 8]
-      - Texture (4):   Variance, Entropy, GLCM Contrast, GLCM Homogeneity
-
-    Total: 24 features per 3×3 window.
-    Returns an image with all features as individual bands.
-    """
-    with_indices = _spectral_indices(image)
-    with_stats = _neighborhood_stats(with_indices)
-    return _texture_features(with_stats)
-
-
-# ---------------------------------------------------------------------------
-# Signature builder (Step 5 of neighborhood approach)
-# ---------------------------------------------------------------------------
-
-def _safe_div(a: ee.Image, b: ee.Image) -> ee.Image:
-    """Divide with a tiny epsilon to avoid division by zero."""
-    EPS = ee.Image.constant(0.001)
-    return a.divide(b.add(EPS))
-
-
-def compute_signature(features: ee.Image) -> ee.Image:
-    """Build class signatures from 24-feature image per Step 5.
-
-    Class labels (matching Dynamic World convention):
-      0 = Water      — NDWI dominant, very smooth texture
-      1 = Forest     — NDVI dominant, smooth texture
-      3 = Bare        — BSI dominant, high BSI_mean
-      4 = Agriculture — moderate NDVI, moderate BSI, heterogeneous texture
-      6 = Urban       — NDBI dominant, high texture complexity
-
-    Returns an image with class proportions + label.
-    """
-    # ---- Class intensity scores ----
-    # Indices are signed: a class only scores where its index is POSITIVE.
-    # Do NOT use .abs() — that makes water/forest (strongly negative NDBI)
-    # look like built-up, causing bare→forest/water to flag as Forest→Urban.
-    zero = ee.Image.constant(0)
-    veg_score = features.select("NDVI_mean").max(zero)    # + only for vegetation
-    built_score = features.select("NDBI_mean").max(zero)  # + only for built-up
-    water_score = features.select("NDWI_mean").max(zero)  # + only for water
-    bare_score = features.select("BSI_mean").max(zero)    # + only for bare soil
-    # Agriculture: bare_score moderate + higher veg texture variance (crop rows)
-    agri_score = bare_score.multiply(features.select("NDVI_var").add(0.01))
-
-    # ---- Normalize to class proportions ----
-    total = veg_score.add(built_score).add(water_score).add(bare_score).add(agri_score)
-    forest_prop = _safe_div(veg_score, total)
-    urban_prop = _safe_div(built_score, total)
-    water_prop = _safe_div(water_score, total)
-    bare_prop = _safe_div(bare_score, total)
-    agri_prop = _safe_div(agri_score, total)
-
-    # ---- Class label: dominant proportion ----
-    is_water = water_prop.gte(forest_prop).And(
-        water_prop.gte(urban_prop)).And(water_prop.gte(bare_prop)).And(
-        water_prop.gte(agri_prop))
-    is_agri = agri_prop.gte(forest_prop).And(
-        agri_prop.gte(urban_prop)).And(agri_prop.gte(bare_prop)).And(
-        agri_prop.gte(water_prop))
-    is_forest = forest_prop.gte(urban_prop).And(
-        forest_prop.gte(bare_prop)).And(forest_prop.gte(agri_prop)).And(
-        forest_prop.gte(water_prop))
-    is_bare = bare_prop.gte(urban_prop).And(
-        bare_prop.gte(agri_prop)).And(bare_prop.gte(forest_prop)).And(
-        bare_prop.gte(water_prop))
-    is_urban = urban_prop.gte(forest_prop).And(
-        urban_prop.gte(bare_prop)).And(urban_prop.gte(agri_prop)).And(
-        urban_prop.gte(water_prop))
-
-    label = (
-        is_water.where(is_forest, 1)
-                .where(is_bare, 3)
-                .where(is_agri, 4)
-                .where(is_urban, 6)
-                .rename("signature_label")
+    # Determine dominant label from proportions
+    is_water = (
+        water_prop.gte(forest_prop)
+        .And(water_prop.gte(urban_prop))
+        .And(water_prop.gte(bare_prop))
+        .And(water_prop.gte(agri_prop))
+    )
+    is_forest = (
+        forest_prop.gte(water_prop)
+        .And(forest_prop.gte(urban_prop))
+        .And(forest_prop.gte(bare_prop))
+        .And(forest_prop.gte(agri_prop))
+    )
+    is_bare = (
+        bare_prop.gte(water_prop)
+        .And(bare_prop.gte(forest_prop))
+        .And(bare_prop.gte(urban_prop))
+        .And(bare_prop.gte(agri_prop))
+    )
+    is_agri = (
+        agri_prop.gte(water_prop)
+        .And(agri_prop.gte(forest_prop))
+        .And(agri_prop.gte(urban_prop))
+        .And(agri_prop.gte(bare_prop))
+    )
+    is_urban = (
+        urban_prop.gte(water_prop)
+        .And(urban_prop.gte(forest_prop))
+        .And(urban_prop.gte(bare_prop))
+        .And(urban_prop.gte(agri_prop))
     )
 
-    return features.addBands([
-        forest_prop.rename("forest_prop"),
-        urban_prop.rename("urban_prop"),
-        water_prop.rename("water_prop"),
-        bare_prop.rename("bare_prop"),
-        agri_prop.rename("agri_prop"),
-        label,
+    label = (
+        is_water
+        .where(is_forest, 1)
+        .where(is_bare, 3)
+        .where(is_agri, 4)
+        .where(is_urban, 6)
+        .rename("signature_label")
+    )
+
+    return ee.Image.cat([
+        forest_prop, urban_prop, water_prop,
+        bare_prop, agri_prop, label,
     ])
 
 
 # ---------------------------------------------------------------------------
-# Rule engine (Step 6 of neighborhood approach)
-# ---------------------------------------------------------------------------
+# Rule engine
 
 # Approved class labels from signatures:
 # 0=Water, 1=Forest, 3=Bare, 4=Agriculture, 6=Urban
@@ -570,7 +405,7 @@ _LABEL_NAMES = {
     6: "Urban",
 }
 
-# Per-class proportion band produced by compute_signature.
+# Per-class proportion band produced by _dw_to_signature.
 # Used to gate transitions: a flip only counts if BOTH the old class (before)
 # and the new class (after) are decisively dominant — marginal, noise-driven
 # relabels are rejected so unchanged ground is not flagged.
@@ -583,50 +418,79 @@ _CLASS_PROP_BAND = {
 }
 
 # Minimum class proportion for a label to be trusted as a real transition
-# endpoint. 0 = trust every label flip (noisy); higher = fewer false positives
-# but more missed changes on mixed pixels. 0.35 = clear majority required.
-_MIN_CLASS_CONF = 0.35
+# endpoint. With raw DW probabilities (no re-normalization), a genuine
+# dominant class typically scores high. 0.45 = moderate — balances false
+# positives against missed changes on mixed pixels.
+_MIN_CLASS_CONF = 0.45
+
+# Minimum surge in the target class's DW probability between T1 and T2
+# for a transition to be validated. A real land-use change (e.g. field →
+# building) causes a large jump; seasonal flicker causes only a tiny shift.
+# 0.25 means the target class probability must increase by ≥ 25 percentage
+# points between the two composites.
+_MIN_PROB_SURGE = 0.25
+
+# Maps each class label to the raw DW band name(s) used for surge checking.
+# This lets the detect_changes function compute T2.prob - T1.prob per pixel.
+_DW_BAND_FOR_CLASS = {
+    0: "water",       # Water class → DW "water" band
+    1: "trees",       # Forest class → DW "trees" band
+    6: "built",       # Urban class → DW "built" band
+}
 
 
-def detect_changes(image_a: ee.Image, image_b: ee.Image) -> ee.Image:
-    """Detect land cover changes via neighborhood signatures + rule engine.
+def detect_changes(dw_a: ee.Image, dw_b: ee.Image) -> ee.Image:
+    """Detect land cover changes via Dynamic World signatures + rule engine.
 
-    Full pipeline:
-      1. Build 24-feature stack for each image (3x3 neighborhood)
-      2. Compute class signatures (forest/urban/water/bare/agriculture proportions)
-      3. Get BEFORE label and AFTER label for every pixel
-      4. Apply rule engine: only flag approved transitions
+    Args:
+        dw_a: Median composite of DW probability bands for timeline 1
+        dw_b: Median composite of DW probability bands for timeline 2
 
-    The rule engine is the anti-noise core:
-      - Does NOT ask "Is this Urban?" - that false-positives everywhere
-      - Asks "Was Forest? Is now Urban?" -> Forest→Urban -> flag
-      - Asks "Was Forest? Is now Bare?" -> ignored (not an approved transition)
+    Pipeline:
+      1. Map 9-band DW probability images to 5-class signature schema
+      2. Get BEFORE label and AFTER label for every pixel
+      3. Apply rule engine with two gates per transition:
+         a. Confidence gate: both the from-class (T1) and to-class (T2)
+            must have proportion ≥ _MIN_CLASS_CONF
+         b. Surge gate: the target class's raw DW probability must have
+            increased by ≥ _MIN_PROB_SURGE between T1 and T2. This
+            eliminates seasonal flicker — a pixel shifting from
+            built=0.34 to built=0.36 has only a 0.02 surge, far below
+            the 0.25 threshold.
     """
-    log.info("Building feature stacks...")
-    feat_a = build_feature_stack(image_a)
-    feat_b = build_feature_stack(image_b)
-
-    log.info("Computing signatures...")
-    sig_a = compute_signature(feat_a)
-    sig_b = compute_signature(feat_b)
+    log.info("Computing DW signatures...")
+    sig_a = _dw_to_signature(dw_a)
+    sig_b = _dw_to_signature(dw_b)
 
     label_a = sig_a.select("signature_label")
     label_b = sig_b.select("signature_label")
 
     change = label_a.multiply(0).rename("change").toInt16()
 
-    # Confidence gate: only flag a transition where the OLD class was
-    # decisively present before AND the NEW class is decisively present after.
-    # This kills false positives from marginal, noise-driven relabels on
-    # unchanged ground (season/illumination/composite differences).
     for code, (from_cls, to_cls, label, color) in enumerate(_CHANGE_TRANSITIONS, start=1):
+        # Gate 1: Confidence — both endpoints must be decisive
         conf_a = sig_a.select(_CLASS_PROP_BAND[from_cls])
         conf_b = sig_b.select(_CLASS_PROP_BAND[to_cls])
+
+        # Gate 2: Probability surge — the target class must have actually
+        # increased. Select the raw DW band for the target class from both
+        # composites and compute T2 - T1.
+        if to_cls in _DW_BAND_FOR_CLASS:
+            target_band = _DW_BAND_FOR_CLASS[to_cls]
+            prob_T1 = dw_a.select(target_band)
+            prob_T2 = dw_b.select(target_band)
+            surge = prob_T2.subtract(prob_T1)
+            surge_mask = surge.gte(_MIN_PROB_SURGE)
+        else:
+            # Fallback: if class not in _DW_BAND_FOR_CLASS, skip surge check
+            surge_mask = ee.Image(1)
+
         mask = (
             label_a.eq(from_cls)
             .And(label_b.eq(to_cls))
             .And(conf_a.gte(_MIN_CLASS_CONF))
             .And(conf_b.gte(_MIN_CLASS_CONF))
+            .And(surge_mask)
         )
         change = change.where(mask, code)
 
@@ -652,7 +516,7 @@ def build_change_legend() -> str:
     return (
         f'<div style="padding:8px 12px">'
         f'<div style="font-weight:700;font-size:12px;margin-bottom:6px;'
-        f'border-bottom:1px solid #ddd;padding-bottom:4px">Neighborhood Change</div>'
+        f'border-bottom:1px solid #ddd;padding-bottom:4px">Dynamic World Change</div>'
         f'{rows}'
         f'</div>'
     )
@@ -667,7 +531,7 @@ _VIS = {"bands": ["B4", "B3", "B2"], "min": 0, "max": 5000}
 
 def build_split_map(
     image1, image2, aoi, cfg,
-    classified1=None, classified2=None,
+    dw_image1=None, dw_image2=None,
 ) -> None:
     """Build a split-panel map using Folium.
 
@@ -736,9 +600,9 @@ def build_split_map(
     ))
 
     # Change detection layer
-    if classified1 is not None and classified2 is not None:
+    if dw_image1 is not None and dw_image2 is not None:
         try:
-            change_img = detect_changes(classified1, classified2)
+            change_img = detect_changes(dw_image1, dw_image2)
             change_map_id = change_img.getMapId(get_change_vis_params())
             folium.TileLayer(
                 tiles=change_map_id["tile_fetcher"].url_format,
@@ -841,8 +705,13 @@ def main():
     image1 = _build_composite(aoi, cfg.timeline1, "Timeline 1")
     log.info("Fetching Timeline 2...")
     image2 = _build_composite(aoi, cfg.timeline2, "Timeline 2")
+
+    log.info("Building DW composites...")
+    dw1 = _build_dw_composite(aoi, cfg.timeline1, "Timeline 1")
+    dw2 = _build_dw_composite(aoi, cfg.timeline2, "Timeline 2")
+
     log.info("Building split-panel map...")
-    build_split_map(image1, image2, aoi, cfg)
+    build_split_map(image1, image2, aoi, cfg, dw_image1=dw1, dw_image2=dw2)
     log.info("Done: %s", cfg.output)
 
 
