@@ -167,14 +167,17 @@
             var center = config.center || [18.52, 73.85];
             var aoiStyle = { color: '#ff6b00', weight: 4, fillOpacity: 0 };
 
+            var esriUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+
             // Before map
             var mapBefore = L.map('map-before', {
                 center: center,
                 zoom: 13,
                 zoomControl: true
             });
+            L.tileLayer(esriUrl, { maxZoom: 18 }).addTo(mapBefore);
 
-            // Sentinel-2 layer on base Esri (100% opacity = covers base)
+            // Sentinel-2 layer on base Esri
             var s2Layer1 = L.tileLayer(tile1url, { maxZoom: 20, opacity: 1.0 });
             s2Layer1.addTo(mapBefore);
             console.log('Layer 1 added to before map');
@@ -196,6 +199,7 @@
                 zoom: 13,
                 zoomControl: true
             });
+            L.tileLayer(esriUrl, { maxZoom: 18 }).addTo(mapAfter);
 
             var s2Layer2 = L.tileLayer(tile2url, { maxZoom: 20, opacity: 1.0 });
             s2Layer2.addTo(mapAfter);
