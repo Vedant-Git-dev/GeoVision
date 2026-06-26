@@ -9,6 +9,18 @@ import os
 load_dotenv()
 
 # ---------------------------------------------------------------------------
+# Land cover class definitions (shared by stats, vis params, and frontend)
+# ---------------------------------------------------------------------------
+
+LAND_COVER_CLASSES = {
+    0: {"name": "Water",       "color": "1565c0"},
+    1: {"name": "Forest",      "color": "2e7d32"},
+    3: {"name": "Bare Land",   "color": "a1887f"},
+    4: {"name": "Agriculture", "color": "f9a825"},
+    6: {"name": "Urban",       "color": "c62828"},
+}
+
+# ---------------------------------------------------------------------------
 # Sentinel-2 cloud masking
 # ---------------------------------------------------------------------------
 
@@ -47,6 +59,13 @@ CLASS_PROP_BAND = {
 # Minimum class proportion for a label to be trusted as a real transition
 MIN_CLASS_CONF = 0.50
 
+# Minimum raw DW probability for a class to be assigned as dominant in the
+# base signature. Lower than MIN_CLASS_CONF because 9-class probability mass
+# means a clearly dominant class often only reaches 0.25–0.40.  The margin
+# check (MIN_DOMINANCE_MARGIN) already ensures dominance; this floor only
+# rejects "tallest dwarf" pixels (e.g. ocean where trees=0.15 leads).
+MIN_SIGNATURE_CONF = 0.30
+
 # Minimum margin a class must lead over the runner-up to be assigned as dominant
 MIN_DOMINANCE_MARGIN = 0.05
 
@@ -68,6 +87,7 @@ MIN_PROB_SURGE = 0.25
 DW_BAND_FOR_CLASS = {
     0: "water",
     1: "trees",
+    4: "crops",
     6: "built",
 }
 

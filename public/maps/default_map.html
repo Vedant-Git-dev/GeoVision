@@ -86,6 +86,62 @@
             width: 100%;
             height: 100%;
         }
+        .stats-panel {
+            position: absolute;
+            bottom: 12px;
+            left: 10px;
+            background: rgba(26, 26, 46, 0.92);
+            color: white;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 11px;
+            z-index: 1000;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+            max-width: 260px;
+            display: none;
+        }
+        .stats-panel:not(:empty) { display: block; }
+        .stats-header {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #90caf9;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+        }
+        .stats-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 0;
+        }
+        .stats-swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        .stats-name {
+            flex: 1;
+            font-weight: 500;
+        }
+        .stats-pct {
+            width: 38px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            color: rgba(255,255,255,0.7);
+        }
+        .stats-arrow {
+            color: rgba(255,255,255,0.4);
+        }
+        .stats-delta {
+            width: 60px;
+            text-align: right;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
     </style>
 </head>
 <body>
@@ -142,10 +198,13 @@
             beforePanel.innerHTML = `
                 <div class="map-label">${config.before_label}</div>
                 <div class="controls">
-                    <label><input type="checkbox" checked id="show-before-s2"> Show Sentinel-2</label>
+                    <label><input type="checkbox" checked id="show-before-s2"> Sentinel-2</label>
+                    <br>
+                    <label><input type="checkbox" id="toggle-lc"> Land Cover</label>
                     <hr style="margin:8px 0;border:none;border-top:1px solid #ddd;">
                     <label><input type="checkbox" id="toggle-mask"> Change Mask</label>
                 </div>
+                <div id="stats-panel" class="stats-panel"></div>
                 <div id="map-before" class="leaflet-container"></div>
             `;
 
@@ -187,6 +246,12 @@
                 console.log('Change mask URL:', config.change_mask_tiles);
                 maskLayer1 = L.tileLayer(config.change_mask_tiles, { maxZoom: 20, opacity: 0.7 });
                 maskLayer2 = L.tileLayer(config.change_mask_tiles, { maxZoom: 20, opacity: 0.7 });
+            }
+
+            var lcLayer1 = null, lcLayer2 = null;
+            if (config.land_cover_before_tiles) {
+                lcLayer1 = L.tileLayer(config.land_cover_before_tiles, { maxZoom: 20, opacity: 0.7 });
+                lcLayer2 = L.tileLayer(config.land_cover_after_tiles, { maxZoom: 20, opacity: 0.7 });
             }
 
             mapBefore.on('move', function() {
@@ -248,6 +313,45 @@
                         if (maskLayer2) mapAfter.removeLayer(maskLayer2);
                     }
                 });
+            }
+
+            var lcToggle = document.getElementById('toggle-lc');
+            if (lcToggle) {
+                lcToggle.addEventListener('change', function(e) {
+                    if (e.target.checked) {
+                        if (lcLayer1) lcLayer1.addTo(mapBefore);
+                        if (lcLayer2) lcLayer2.addTo(mapAfter);
+                    } else {
+                        if (lcLayer1) mapBefore.removeLayer(lcLayer1);
+                        if (lcLayer2) mapAfter.removeLayer(lcLayer2);
+                    }
+                });
+            }
+
+            // Stats panel
+            if (config.land_cover_stats && config.land_cover_stats.classes) {
+                var statsPanel = document.getElementById('stats-panel');
+                if (statsPanel) {
+                    var html = '<div class="stats-header">Land Cover Change</div>';
+                    config.land_cover_stats.classes.forEach(function(c) {
+                        var arrow = c.delta > 0 ? '↑' : c.delta < 0 ? '↓' : '—';
+                        var isNatural = (c.name === 'Water' || c.name === 'Forest' || c.name === 'Agriculture');
+                        var deltaColor;
+                        if (c.delta === 0) { deltaColor = '#666'; }
+                        else if (isNatural) { deltaColor = c.delta > 0 ? '#2e7d32' : '#c62828'; }
+                        else { deltaColor = c.delta > 0 ? '#c62828' : '#2e7d32'; }
+                        var sign = c.delta > 0 ? '+' : '';
+                        html += '<div class="stats-row">'
+                            + '<span class="stats-swatch" style="background:#' + c.color + '"></span>'
+                            + '<span class="stats-name">' + c.name + '</span>'
+                            + '<span class="stats-pct">' + c.before + '%</span>'
+                            + '<span class="stats-arrow">→</span>'
+                            + '<span class="stats-pct">' + c.after + '%</span>'
+                            + '<span class="stats-delta" style="color:' + deltaColor + '">' + sign + c.delta + '% ' + arrow + '</span>'
+                            + '</div>';
+                    });
+                    statsPanel.innerHTML = html;
+                }
             }
         }
 

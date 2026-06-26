@@ -13,6 +13,8 @@ from .geocode import resolve_location
 from .composite import build_composite
 from .dynamic_world import build_dw_composite
 from .changes import detect_changes, get_change_vis_params
+from .signature import dw_to_signature
+from .stats import compute_land_cover_stats
 from . import config
 
 log = logging.getLogger(__name__)
@@ -64,6 +66,29 @@ def run_pipeline(
     change_map_id = change_img.getMapId(change_vis)
     change_mask_url = change_map_id["tile_fetcher"].url_format
 
+    log.info("Building land cover classification tiles and statistics...")
+    sig1 = dw_to_signature(dw1)
+    sig2 = dw_to_signature(dw2)
+
+    # Remap DW class codes (0,1,3,4,6) to sequential indices (0-4)
+    # because GEE palette maps continuous integer ranges.
+    class_codes = sorted(config.LAND_COVER_CLASSES)
+    lc_palette = ",".join(
+        config.LAND_COVER_CLASSES[c]["color"] for c in class_codes
+    )
+    lc_vis = {
+        "bands": ["lc_class"],
+        "min": 0,
+        "max": len(class_codes) - 1,
+        "palette": lc_palette,
+    }
+    lc1 = sig1.select("signature_label").remap(class_codes, list(range(len(class_codes)))).rename("lc_class")
+    lc2 = sig2.select("signature_label").remap(class_codes, list(range(len(class_codes)))).rename("lc_class")
+    lc1_url = lc1.getMapId(lc_vis)["tile_fetcher"].url_format
+    lc2_url = lc2.getMapId(lc_vis)["tile_fetcher"].url_format
+
+    lc_stats = compute_land_cover_stats(sig1, sig2, aoi)
+
     log.info("Generated map config for: %s", location_query)
 
     return {
@@ -71,6 +96,9 @@ def run_pipeline(
         "before_tiles": tile1_url,
         "after_tiles": tile2_url,
         "change_mask_tiles": change_mask_url,
+        "land_cover_before_tiles": lc1_url,
+        "land_cover_after_tiles": lc2_url,
+        "land_cover_stats": lc_stats,
         "before_label": before_date,
         "after_label": after_date,
         "aoi": aoi.getInfo(),
