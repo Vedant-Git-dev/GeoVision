@@ -166,6 +166,50 @@ body {
     to { transform: rotate(360deg); }
 }
 
+.legend-panel {
+    margin-top: 4px;
+    padding: 18px;
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 248, 250, 0.78));
+    box-shadow: var(--shadow-sm);
+}
+
+.legend-panel__eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 12px;
+}
+
+.legend-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.legend-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--text-main);
+}
+
+.legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
 /* Map Area */
 .map-container {
     flex: 1;
