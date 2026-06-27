@@ -216,7 +216,7 @@
             beforePanel.innerHTML = `
                 <div class="map-label">${config.before_label}</div>
                 <div class="controls">
-                    <label><input type="checkbox" checked id="show-before-s2"> Sentinel-2</label>
+                    <label><input type="checkbox" id="show-before-s2"> Sentinel-2</label>
                     <br>
                     <label><input type="checkbox" id="toggle-lc"> Land Cover</label>
                     <hr style="margin:8px 0;border:none;border-top:1px solid #ddd;">
@@ -249,47 +249,57 @@
             // Before map
             var mapBefore = L.map('map-before', {
                 center: center,
-                zoom: 13,
+                zoom: 14,
                 zoomControl: true
             });
             L.tileLayer(esriUrl, { maxZoom: 18 }).addTo(mapBefore);
 
-            // Sentinel-2 layer on base Esri
-            var s2Layer1 = L.tileLayer(tile1url, { maxZoom: 20, opacity: 1.0 });
-            s2Layer1.addTo(mapBefore);
-            console.log('Layer 1 added to before map');
+            // Sentinel-2 layer on base Esri (do NOT add by default - ESRI is crisper)
+            var s2Layer1 = L.tileLayer(tile1url, { maxZoom: 21, minZoom: 0, opacity: 0.9 });
+            // s2Layer1.addTo(mapBefore);  // Disabled: ESRI base is clearer
+            console.log('Layer 1 created but not added (ESRI base is primary)');
 
             var maskLayer1 = null, maskLayer2 = null;
             if (config.change_mask_tiles) {
                 console.log('Change mask URL:', config.change_mask_tiles);
-                maskLayer1 = L.tileLayer(config.change_mask_tiles, { maxZoom: 20, opacity: 0.7 });
-                maskLayer2 = L.tileLayer(config.change_mask_tiles, { maxZoom: 20, opacity: 0.7 });
+                maskLayer1 = L.tileLayer(config.change_mask_tiles, { maxZoom: 21, minZoom: 0, opacity: 0.7 });
+                maskLayer2 = L.tileLayer(config.change_mask_tiles, { maxZoom: 21, minZoom: 0, opacity: 0.7 });
             }
 
             var lcLayer1 = null, lcLayer2 = null;
             if (config.land_cover_before_tiles) {
-                lcLayer1 = L.tileLayer(config.land_cover_before_tiles, { maxZoom: 20, opacity: 0.7 });
-                lcLayer2 = L.tileLayer(config.land_cover_after_tiles, { maxZoom: 20, opacity: 0.7 });
+                lcLayer1 = L.tileLayer(config.land_cover_before_tiles, { maxZoom: 21, minZoom: 0, opacity: 0.4 });
+                lcLayer2 = L.tileLayer(config.land_cover_after_tiles, { maxZoom: 21, minZoom: 0, opacity: 0.4 });
             }
-
-            mapBefore.on('move', function() {
-                if (mapAfter) mapAfter.setView(mapBefore.getCenter(), mapBefore.getZoom());
-            });
 
             // After map
             var mapAfter = L.map('map-after', {
                 center: center,
-                zoom: 13,
+                zoom: 14,
                 zoomControl: true
             });
             L.tileLayer(esriUrl, { maxZoom: 18 }).addTo(mapAfter);
 
-            var s2Layer2 = L.tileLayer(tile2url, { maxZoom: 20, opacity: 1.0 });
-            s2Layer2.addTo(mapAfter);
-            console.log('Layer 2 added to after map');
+            var s2Layer2 = L.tileLayer(tile2url, { maxZoom: 21, minZoom: 0, opacity: 0.9 });
+            // s2Layer2.addTo(mapAfter);  // Disabled: ESRI base is clearer
+            console.log('Layer 2 created but not added (ESRI base is primary)');
+
+            // Sync maps without infinite recursion
+            var syncing = false;
+            mapBefore.on('move', function() {
+                if (!syncing && mapAfter) {
+                    syncing = true;
+                    mapAfter.setView(mapBefore.getCenter(), mapBefore.getZoom(), { animate: false });
+                    syncing = false;
+                }
+            });
 
             mapAfter.on('move', function() {
-                if (mapBefore) mapBefore.setView(mapAfter.getCenter(), mapAfter.getZoom());
+                if (!syncing && mapBefore) {
+                    syncing = true;
+                    mapBefore.setView(mapAfter.getCenter(), mapAfter.getZoom(), { animate: false });
+                    syncing = false;
+                }
             });
 
             // AOI
