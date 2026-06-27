@@ -11,5 +11,7 @@ logging.basicConfig(
 from .pipeline import run_pipeline
 from .types import Location, DateRange
 from .ee_init import init_ee
+from .boundary import get_district_aoi
+from .settlements import get_settlements
 
-__all__ = ["run_pipeline", "init_ee", "Location", "DateRange"]
+__all__ = ["run_pipeline", "init_ee", "Location", "DateRange", "get_district_aoi", "get_settlements"]

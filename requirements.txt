@@ -3,3 +3,5 @@ geemap>=0.30
 geopy>=2.4.0
 flask>=3.0.0
 python-dotenv>=1.0.0
+osmnx>=1.9.0
+shapely>=2.0.0

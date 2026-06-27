@@ -11,8 +11,9 @@ The core idea is a temporal comparison. Take two snapshots in time, classify wha
 You enter a location and two dates in the sidebar. The backend does the rest.
 
 1. Your place name gets geocoded into coordinates via OpenStreetMap
-2. A 10 km radius area of interest is drawn around that point
-3. Each date is expanded into a 90 day window so there are enough satellite scenes for a stable composite
+2. The official district boundary is fetched from FAO GAUL (UN-recognized administrative boundaries at Level 2) via Earth Engine — if no district is found, it falls back to a 10 km buffer
+3. Major cities and towns within the district are discovered via OSMnx and displayed as labeled markers on the map
+4. Each date is expanded into a 90 day window so there are enough satellite scenes for a stable composite
 4. Sentinel 2 imagery is fetched for both windows, clouds are stripped out using scene level and pixel level filters plus the Scene Classification Layer, and a cloud free median composite is built for each timeline
 5. Google Dynamic World probability bands are fetched for the same windows and reduced to median composites
 6. The 9 class Dynamic World probabilities are mapped into a 5 class signature schema (water, forest, bare land, agriculture, urban) with raw proportions kept as is to avoid inflating ambiguous pixels
@@ -29,11 +30,11 @@ The result is a split screen map where the left panel shows the before image, th
 
 ## Tech Stack
 
-**Backend**: Python, Flask, Google Earth Engine Python API, geopy (Nominatim geocoding), python-dotenv
+**Backend**: Python, Flask, Google Earth Engine Python API, geopy (Nominatim geocoding), osmnx (settlement discovery), shapely (geometry conversion), python-dotenv
 
 **Frontend**: Vanilla HTML/CSS/JS, Leaflet.js for maps, Flatpickr for date picking, Esri World Imagery basemap
 
-**Data sources**: Copernicus Sentinel 2 SR Harmonized (optical imagery), Copernicus S2 Cloud Probability, Google Dynamic World V1 (land cover probabilities)
+**Data sources**: Copernicus Sentinel 2 SR Harmonized (optical imagery), Copernicus S2 Cloud Probability, Google Dynamic World V1 (land cover probabilities), FAO GAUL 2015 Level 2 (official district boundaries), OpenStreetMap (settlement names and locations)
 
 ## Project Structure
 
@@ -44,6 +45,8 @@ geovision/
   types.py            Location and DateRange dataclasses
   ee_init.py          Earth Engine authentication
   geocode.py          place name to coordinates
+  boundary.py         FAO GAUL district boundary lookup
+  settlements.py      OSMnx settlement discovery (cities and towns)
   composite.py        Sentinel 2 cloud masking and median compositing
   dynamic_world.py    Dynamic World probability compositing
   signature.py        9 band to 5 class mapping with dominance logic

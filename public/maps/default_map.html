@@ -142,6 +142,24 @@
             font-weight: 600;
             font-variant-numeric: tabular-nums;
         }
+        /* Settlement markers */
+        .settlement-dot {
+            radius: 4;
+        }
+        .settlement-label {
+            background: rgba(26, 26, 46, 0.85) !important;
+            border: none !important;
+            border-radius: 4px !important;
+            color: white !important;
+            font-size: 11px !important;
+            font-weight: 500 !important;
+            padding: 2px 6px !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3) !important;
+            white-space: nowrap !important;
+        }
+        .settlement-label::before {
+            border-top-color: rgba(26, 26, 46, 0.85) !important;
+        }
     </style>
 </head>
 <body>
@@ -289,6 +307,28 @@
                 mapBefore.fitBounds(aoiLayer.getBounds(), { padding: [50, 50] });
                 mapAfter.fitBounds(aoiLayer.getBounds(), { padding: [50, 50] });
             }
+
+            // Settlement markers
+            function addSettlements(mapInstance, settlements) {
+                if (!settlements || !settlements.length) return;
+                settlements.forEach(function(s) {
+                    L.circleMarker([s.lat, s.lon], {
+                        radius: 4,
+                        fillColor: '#ff9800',
+                        color: '#fff',
+                        weight: 1,
+                        fillOpacity: 0.9
+                    }).addTo(mapInstance)
+                      .bindTooltip(s.name, {
+                          permanent: true,
+                          direction: 'top',
+                          className: 'settlement-label',
+                          offset: [0, -6]
+                      });
+                });
+            }
+            addSettlements(mapBefore, config.settlements);
+            addSettlements(mapAfter, config.settlements);
 
             // Toggles
             var s2Toggle = document.getElementById('show-before-s2');

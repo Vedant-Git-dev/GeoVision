@@ -57,14 +57,14 @@ CLASS_PROP_BAND = {
 }
 
 # Minimum class proportion for a label to be trusted as a real transition
-MIN_CLASS_CONF = 0.50
+MIN_CLASS_CONF = 0.45
 
 # Minimum raw DW probability for a class to be assigned as dominant in the
 # base signature. Lower than MIN_CLASS_CONF because 9-class probability mass
 # means a clearly dominant class often only reaches 0.25–0.40.  The margin
 # check (MIN_DOMINANCE_MARGIN) already ensures dominance; this floor only
 # rejects "tallest dwarf" pixels (e.g. ocean where trees=0.15 leads).
-MIN_SIGNATURE_CONF = 0.30
+MIN_SIGNATURE_CONF = 0.25
 
 # Minimum margin a class must lead over the runner-up to be assigned as dominant
 MIN_DOMINANCE_MARGIN = 0.05
@@ -73,8 +73,8 @@ MIN_DOMINANCE_MARGIN = 0.05
 # Spectral cross-validation thresholds (NDVI / NDWI from Sentinel-2)
 # ---------------------------------------------------------------------------
 
-MIN_NDVI_FOR_FOREST = 0.3
-MIN_NDWI_FOR_WATER = 0.1
+MIN_NDVI_FOR_FOREST = 0.0
+MIN_NDWI_FOR_WATER = 0.0
 
 # ---------------------------------------------------------------------------
 # Surge gate
@@ -90,6 +90,18 @@ DW_BAND_FOR_CLASS = {
     4: "crops",
     6: "built",
 }
+
+# ---------------------------------------------------------------------------
+# FAO GAUL administrative boundaries
+# ---------------------------------------------------------------------------
+
+GAUL_LEVEL2 = "FAO/GAUL/2015/level2"
+
+# ---------------------------------------------------------------------------
+# Settlement discovery (OSMnx)
+# ---------------------------------------------------------------------------
+
+SETTLEMENT_PLACE_TAGS = ["city", "town"]
 
 # ---------------------------------------------------------------------------
 # Default parameters (used by app.py and pipeline.py)
