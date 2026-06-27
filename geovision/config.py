@@ -73,8 +73,8 @@ MIN_DOMINANCE_MARGIN = 0.05
 # Spectral cross-validation thresholds (NDVI / NDWI from Sentinel-2)
 # ---------------------------------------------------------------------------
 
-MIN_NDVI_FOR_FOREST = 0.0
-MIN_NDWI_FOR_WATER = 0.0
+MIN_NDVI_FOR_FOREST = 0.3
+MIN_NDWI_FOR_WATER = 0.1
 
 # ---------------------------------------------------------------------------
 # Surge gate
