@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnGenerate = document.getElementById('generate-btn');
     const mapOverlay = document.getElementById('map-overlay');
     const iframe = document.getElementById('map-frame');
+    const answerBox = document.getElementById('answer-box');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -24,11 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
         btnGenerate.classList.add('loading');
         mapOverlay.classList.add('active');
         btnGenerate.disabled = true;
+        answerBox.textContent = ''; // clear previous answer
 
         const data = {
             location: document.getElementById('location').value,
             before_date: document.getElementById('before_date').value,
-            after_date: document.getElementById('after_date').value
+            after_date: document.getElementById('after_date').value,
+            question: document.getElementById('question').value.trim()
         };
 
         try {
@@ -56,6 +59,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     iframe.src = result.map_url;
                 }, 50);
 
+                // Display explanation if present
+                if (result.explanation) {
+                    answerBox.textContent = result.explanation;
+                    answerBox.style.color = '#333';
+                }
+
                 iframe.onload = () => {
                     console.log('Iframe loaded');
                     mapOverlay.classList.remove('active');
@@ -63,14 +72,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     btnGenerate.disabled = false;
                 };
             } else {
-                alert("Error: " + (result.error || "Unknown error"));
+                answerBox.textContent = "Error: " + (result.error || "Unknown error");
+                answerBox.style.color = '#c00';
                 mapOverlay.classList.remove('active');
                 btnGenerate.classList.remove('loading');
                 btnGenerate.disabled = false;
             }
         } catch (error) {
             console.error("Failed:", error);
-            alert("Could not connect to the backend server.");
+            answerBox.textContent = "Could not connect to the backend server.";
+            answerBox.style.color = '#c00';
             mapOverlay.classList.remove('active');
             btnGenerate.classList.remove('loading');
             btnGenerate.disabled = false;

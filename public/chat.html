@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoVision — AI Chat</title>
+
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Chat Styles -->
+    <link rel="stylesheet" href="chat.css">
+</head>
+<body>
+
+    <!-- ─── Top Navigation ─── -->
+    <nav class="navbar" id="navbar">
+        <a href="/chat" class="navbar-brand">
+            <span class="brand-icon">
+                <i data-lucide="satellite"></i>
+            </span>
+            <span class="brand-text">GeoVision</span>
+            <span class="brand-badge">AI</span>
+        </a>
+        <div class="navbar-links">
+            <a href="/" class="nav-link" id="nav-classic-view">
+                <i data-lucide="layout-grid"></i>
+                Classic View
+            </a>
+        </div>
+    </nav>
+
+    <!-- ─── Chat Container ─── -->
+    <main class="chat-wrapper">
+
+        <!-- ─── Messages Area ─── -->
+        <div class="messages-container" id="messages-container">
+            <div class="messages-inner" id="messages-inner">
+
+                <!-- Welcome message -->
+                <div class="welcome-hero" id="welcome-hero">
+                    <div class="welcome-icon">
+                        <i data-lucide="globe"></i>
+                    </div>
+                    <h2 class="welcome-title">What would you like to explore?</h2>
+                    <p class="welcome-subtitle">Ask about land-use changes anywhere on Earth. I'll analyze satellite imagery and show you what's changed.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Input Area ─── -->
+        <div class="input-area" id="input-area">
+            <div class="input-area-inner">
+                <!-- Suggested Prompt Chips -->
+                <div class="chips-row" id="chips-row">
+                    <button class="chip" id="chip-1" data-prompt="What changed in Mumbai between 2020 and 2024?">
+                        <i data-lucide="building-2"></i> What changed in Mumbai between 2020 and 2024?
+                    </button>
+                    <button class="chip" id="chip-2" data-prompt="Show me deforestation in Amazon 2019 to 2023">
+                        <i data-lucide="trees"></i> Show me deforestation in Amazon 2019 to 2023
+                    </button>
+                    <button class="chip" id="chip-3" data-prompt="Analyze urban growth in Bangalore from 2018 to 2024">
+                        <i data-lucide="radio-tower"></i> Analyze urban growth in Bangalore from 2018 to 2024
+                    </button>
+                    <button class="chip" id="chip-4" data-prompt="How has the coastline changed in Dubai since 2017?">
+                        <i data-lucide="waves"></i> How has the coastline changed in Dubai since 2017?
+                    </button>
+                </div>
+
+                <!-- Input Form -->
+                <form class="chat-form" id="chat-form" autocomplete="off">
+                    <div class="input-wrapper" id="input-wrapper">
+                        <textarea
+                            id="chat-input"
+                            class="chat-input"
+                            placeholder="Ask about land-use changes…"
+                            rows="1"
+                            aria-label="Chat message input"
+                        ></textarea>
+                        <button type="submit" class="send-btn" id="send-btn" aria-label="Send message" disabled>
+                            <i data-lucide="corner-down-left"></i>
+                        </button>
+                    </div>
+                    <p class="input-hint">GeoVision analyzes Sentinel-2 satellite imagery via Google Earth Engine</p>
+                </form>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Chat Logic -->
+    <script src="chat.js"></script>
+
+</body>
+</html>
