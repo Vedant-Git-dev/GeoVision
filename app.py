@@ -29,12 +29,12 @@ def add_header(response):
 
 @app.route('/')
 def index():
-    return send_from_directory('public', 'index.html')
-
-
-@app.route('/chat')
-def chat_page():
     return send_from_directory('public', 'chat.html')
+
+
+@app.route('/classic')
+def classicview():
+    return send_from_directory('public', 'index.html')
 
 
 @app.route('/check-ee')
@@ -232,7 +232,7 @@ def api_chat_stream():
 if __name__ == '__main__':
     print("=========================================")
     print(" GeoVision - Starting on http://127.0.0.1:5000")
-    print("  Classic UI: http://127.0.0.1:5000/")
-    print("  AI Chat:    http://127.0.0.1:5000/chat")
+    print("  AI Chat:    http://127.0.0.1:5000/")
+    print("  Classic UI: http://127.0.0.1:5000/classic")
     print("=========================================")
     app.run(debug=True, port=5000)
