@@ -117,13 +117,16 @@ def _validate_date(date_str: str | None) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def process_chat_message(user_message: str, history: list = None) -> Dict[str, Any]:
+def process_chat_message(user_message: str, history: list = None, on_progress=None) -> Dict[str, Any]:
     """Process a user chat message end-to-end.
 
     1. Parse the intent (location, dates, question) via Groq.
     2. If intent is 'chat', return conversational reply.
     3. Run the satellite change-detection pipeline.
     4. Generate an LLM explanation of the results.
+
+    Args:
+        on_progress: Optional callback for pipeline progress events.
     """
     # Step 1 — Parse intent
     parsed = _parse_intent(user_message, history)
@@ -163,6 +166,7 @@ def process_chat_message(user_message: str, history: list = None) -> Dict[str, A
         after_date=after_date,
         project_id=EE_PROJECT_ID,
         city=city,
+        on_progress=on_progress,
     )
 
     # Step 3 — Generate explanation

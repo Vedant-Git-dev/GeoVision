@@ -80,10 +80,16 @@
         <!-- Main Map Area -->
         <main class="map-container">
             <div class="map-overlay" id="map-overlay">
-                <div class="overlay-card">
-                    <div class="spinner"></div>
-                    <h2>Processing Data</h2>
-                    <p>Fetching Sentinel-2 imagery and computing composites from Earth Engine.</p>
+                <div class="progress-panel" id="progress-panel">
+                    <div class="progress-spinner"></div>
+                    <div class="progress-info">
+                        <h2 class="progress-title" id="progress-title">Processing Data</h2>
+                        <p class="progress-detail" id="progress-detail">Initializing…</p>
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill" id="progress-bar-fill"></div>
+                        </div>
+                        <p class="progress-step-label" id="progress-step-label">Step 0 of 6</p>
+                    </div>
                 </div>
             </div>
             <!-- Ensure it points to an existing map by default if the backend is slow to load initially -->

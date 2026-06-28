@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import datetime, timedelta
 
 import ee
@@ -35,12 +36,16 @@ def run_pipeline(
     after_date: str = config.DEFAULT_AFTER_DATE,
     project_id: str | None = config.EE_PROJECT_ID,
     city: str | None = None,
+    on_progress: Callable[[dict], None] | None = None,
 ) -> dict:
     """Run the full change-detection pipeline.
 
     Args:
         city: If provided, analyze only this city/town boundary instead
               of the full district.  e.g. "Kharadi, Pune, India".
+        on_progress: Optional callback invoked with a progress dict
+              before each major step.  Dict keys: step, step_num,
+              total_steps, detail, status.
 
     Returns:
         A config dict with center, tile URLs, labels, and AOI geometry —
@@ -48,6 +53,15 @@ def run_pipeline(
     """
     start1, end1 = _get_window(before_date)
     start2, end2 = _get_window(after_date)
+
+    if on_progress:
+        on_progress({
+            "step": "resolve_location",
+            "step_num": 1,
+            "total_steps": 6,
+            "detail": f"Geocoding {location_query}",
+            "status": "in_progress",
+        })
 
     init_ee(project_id)
 
@@ -59,12 +73,39 @@ def run_pipeline(
     else:
         aoi, area_name = get_district_aoi(loc.lat, loc.lon)
 
+    if on_progress:
+        on_progress({
+            "step": "fetch_aoi",
+            "step_num": 2,
+            "total_steps": 6,
+            "detail": f"Fetching AOI for {area_name}",
+            "status": "in_progress",
+        })
+
     log.info("Fetching AOI geometry and discovering settlements in %s...", area_name)
     aoi_geojson = aoi.getInfo()
     settlements = get_settlements(aoi_geojson)
 
+    if on_progress:
+        on_progress({
+            "step": "build_composite_before",
+            "step_num": 3,
+            "total_steps": 6,
+            "detail": f"{start1} -> {end1}",
+            "status": "in_progress",
+        })
+
     log.info("Building composite 1 (%s -> %s)...", start1, end1)
     image1 = build_composite(aoi, DateRange(start1, end1), "Timeline 1")
+
+    if on_progress:
+        on_progress({
+            "step": "build_composite_after",
+            "step_num": 4,
+            "total_steps": 6,
+            "detail": f"{start2} -> {end2}",
+            "status": "in_progress",
+        })
 
     log.info("Building composite 2 (%s -> %s)...", start2, end2)
     image2 = build_composite(aoi, DateRange(start2, end2), "Timeline 2")
@@ -74,6 +115,15 @@ def run_pipeline(
     tile1_url = map_id1["tile_fetcher"].url_format
     tile2_url = map_id2["tile_fetcher"].url_format
 
+    if on_progress:
+        on_progress({
+            "step": "detect_changes",
+            "step_num": 5,
+            "total_steps": 6,
+            "detail": "Dynamic World change detection",
+            "status": "in_progress",
+        })
+
     log.info("Detecting changes via Dynamic World signatures...")
     dw1 = build_dw_composite(aoi, DateRange(start1, end1), "Timeline 1")
     dw2 = build_dw_composite(aoi, DateRange(start2, end2), "Timeline 2")
@@ -81,6 +131,15 @@ def run_pipeline(
     change_vis = get_change_vis_params()
     change_map_id = change_img.getMapId(change_vis)
     change_mask_url = change_map_id["tile_fetcher"].url_format
+
+    if on_progress:
+        on_progress({
+            "step": "compute_stats",
+            "step_num": 6,
+            "total_steps": 6,
+            "detail": "Land cover classification & statistics",
+            "status": "in_progress",
+        })
 
     log.info("Building land cover classification tiles and statistics...")
     sig1 = dw_to_signature(dw1)

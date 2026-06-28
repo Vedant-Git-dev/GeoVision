@@ -69,8 +69,18 @@
         }
     });
 
+    // ─── Pipeline Step Labels ───
+    const STEP_LABELS = {
+        resolve_location: 'Resolving Location',
+        fetch_aoi: 'Fetching Area of Interest',
+        build_composite_before: 'Building Before Composite',
+        build_composite_after: 'Building After Composite',
+        detect_changes: 'Detecting Changes',
+        compute_stats: 'Computing Statistics',
+    };
+
     // ═══════════════════════════════════════════════════
-    // Form Submit
+    // Form Submit — SSE Stream
     // ═══════════════════════════════════════════════════
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -94,35 +104,87 @@
         input.value = '';
         input.style.height = 'auto';
 
-        // Show typing indicator
-        const typingEl = appendTypingIndicator();
+        // Show progress panel (replaces typing indicator)
+        const progressEl = appendProgressPanel();
         scrollToBottom();
 
         try {
-            const res = await fetch('/api/chat', {
+            const response = await fetch('/api/chat/stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message, history: chatHistory }),
             });
 
-            const data = await res.json();
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let result = null;
 
-            // Remove typing indicator
-            typingEl.remove();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
 
-            if (data.success) {
-                appendAIMessage(data);
-                if (data.parsed) {
-                    chatHistory.push({ role: 'assistant', content: JSON.stringify(data.parsed) });
-                } else if (data.explanation) {
-                    chatHistory.push({ role: 'assistant', content: data.explanation });
+                buffer += decoder.decode(value, { stream: true });
+
+                const parts = buffer.split('\n\n');
+                buffer = parts.pop();
+
+                for (const part of parts) {
+                    let eventType = 'message';
+                    let eventData = '';
+
+                    for (const line of part.split('\n')) {
+                        if (line.startsWith('event: ')) eventType = line.slice(7);
+                        else if (line.startsWith('data: ')) eventData = line.slice(6);
+                    }
+
+                    if (!eventData) continue;
+
+                    try {
+                        const payload = JSON.parse(eventData);
+
+                        if (eventType === 'progress') {
+                            const pct = Math.round((payload.step_num / payload.total_steps) * 100);
+                            const titleEl = progressEl.querySelector('.chat-progress-title');
+                            const detailEl = progressEl.querySelector('.chat-progress-detail');
+                            const barEl = progressEl.querySelector('.chat-progress-bar-fill');
+                            const stepEl = progressEl.querySelector('.chat-progress-step');
+                            if (titleEl) titleEl.textContent = STEP_LABELS[payload.step] || payload.step;
+                            if (detailEl) detailEl.textContent = payload.detail;
+                            if (barEl) barEl.style.width = pct + '%';
+                            if (stepEl) stepEl.textContent = 'Step ' + payload.step_num + ' of ' + payload.total_steps;
+                            scrollToBottom();
+                        } else if (eventType === 'result') {
+                            result = payload;
+                            const barEl = progressEl.querySelector('.chat-progress-bar-fill');
+                            if (barEl) barEl.style.width = '100%';
+                            progressEl.classList.add('complete');
+                        } else if (eventType === 'error') {
+                            throw new Error(payload.error || 'Request failed');
+                        }
+                    } catch (parseErr) {
+                        if (parseErr.message && !parseErr.message.includes('position')) throw parseErr;
+                        console.warn('Failed to parse SSE event:', parseErr);
+                    }
                 }
-            } else {
-                appendErrorMessage(data.error || 'Something went wrong. Please try again.');
+            }
+
+            // Remove progress panel
+            progressEl.remove();
+
+            if (result && result.success) {
+                appendAIMessage(result);
+                if (result.parsed) {
+                    chatHistory.push({ role: 'assistant', content: JSON.stringify(result.parsed) });
+                } else if (result.explanation) {
+                    chatHistory.push({ role: 'assistant', content: result.explanation });
+                }
+            } else if (result && result.error) {
+                appendErrorMessage(result.error);
             }
         } catch (err) {
-            typingEl.remove();
-            appendErrorMessage('Network error. Please check your connection and try again.');
+            progressEl.remove();
+            appendErrorMessage(err.message || 'Network error. Please check your connection.');
         }
 
         isWaiting = false;
@@ -143,29 +205,28 @@
         scrollToBottom();
     }
 
-    function appendTypingIndicator() {
+    function appendProgressPanel() {
         const row = createElement('div', 'message-row ai');
-        row.id = 'typing-row';
+        row.id = 'progress-row';
 
-        row.innerHTML = `
-            <div class="typing-indicator">
-                <div class="typing-avatar">
-                    <i data-lucide="bot"></i>
+        const panel = createElement('div', 'chat-progress');
+        panel.innerHTML = `
+            <div class="chat-progress-spinner"></div>
+            <div class="chat-progress-info">
+                <div class="chat-progress-title">Analyzing…</div>
+                <div class="chat-progress-detail">Initializing</div>
+                <div class="chat-progress-bar-track">
+                    <div class="chat-progress-bar-fill"></div>
                 </div>
-                <div class="typing-dots">
-                    <span class="typing-dot"></span>
-                    <span class="typing-dot"></span>
-                    <span class="typing-dot"></span>
-                </div>
+                <div class="chat-progress-step">Step 0 of 6</div>
             </div>
         `;
 
+        row.appendChild(panel);
         messagesInner.appendChild(row);
         if (window.lucide) lucide.createIcons();
-        return row;
+        return panel;
     }
-
-
 
     function appendAIMessage(data) {
         const { parsed, config, explanation } = data;

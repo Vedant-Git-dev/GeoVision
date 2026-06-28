@@ -1,10 +1,13 @@
 """GeoVision — Flask web server for satellite change detection."""
 
+import json
 import logging
 import os
+import queue
+import threading
 
 import ee
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 
 from geovision import run_pipeline
 from geovision.config import EE_PROJECT_ID
@@ -84,6 +87,78 @@ def generate():
         return jsonify({"success": False, "error": str(e)})
 
 
+@app.route('/generate/stream', methods=['POST'])
+def generate_stream():
+    """Stream pipeline progress as SSE events, returning the result at the end."""
+    data = request.json
+    location_query = data.get('location')
+    before_date = data.get('before_date')
+    after_date = data.get('after_date')
+    question = data.get('question', '').strip()
+    city = data.get('city')
+
+    event_queue = queue.Queue()
+
+    def on_progress(info):
+        event_queue.put(('progress', json.dumps(info)))
+
+    def run():
+        try:
+            config = run_pipeline(
+                location_query=location_query,
+                before_date=before_date,
+                after_date=after_date,
+                project_id=EE_PROJECT_ID,
+                city=city,
+                on_progress=on_progress,
+            )
+
+            result = {
+                "success": True,
+                "map_url": "maps/default_map.html",
+                "config": config,
+            }
+
+            if question:
+                explanation = explain.generate_explanation(
+                    location_query=location_query,
+                    before_date=before_date,
+                    after_date=after_date,
+                    config=config,
+                    question=question,
+                )
+                result["explanation"] = explanation
+
+            event_queue.put(('result', json.dumps(result)))
+        except Exception as e:
+            log.error("Stream error: %s", str(e))
+            import traceback
+            traceback.print_exc()
+            event_queue.put(('error', json.dumps({"success": False, "error": str(e)})))
+        finally:
+            event_queue.put(None)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+
+    def stream():
+        while True:
+            item = event_queue.get()
+            if item is None:
+                break
+            event_type, payload = item
+            yield f"event: {event_type}\ndata: {payload}\n\n"
+
+    return Response(
+        stream(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+        },
+    )
+
+
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
     data = request.json
@@ -101,6 +176,57 @@ def api_chat():
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)})
+
+
+@app.route('/api/chat/stream', methods=['POST'])
+def api_chat_stream():
+    """Stream chat response with pipeline progress as SSE events."""
+    data = request.json
+    message = data.get('message', '').strip()
+    history = data.get('history', [])
+
+    if not message:
+        def error_stream():
+            yield f"event: error\ndata: {json.dumps({'success': False, 'error': 'No message provided.'})}\n\n"
+        return Response(error_stream(), mimetype='text/event-stream',
+                        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
+    event_queue = queue.Queue()
+
+    def on_progress(info):
+        event_queue.put(('progress', json.dumps(info)))
+
+    def run():
+        try:
+            result = chat.process_chat_message(message, history, on_progress=on_progress)
+            event_queue.put(('result', json.dumps(result)))
+        except Exception as e:
+            log.error("Chat stream error: %s", str(e))
+            import traceback
+            traceback.print_exc()
+            event_queue.put(('error', json.dumps({"success": False, "error": str(e)})))
+        finally:
+            event_queue.put(None)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+
+    def stream():
+        while True:
+            item = event_queue.get()
+            if item is None:
+                break
+            event_type, payload = item
+            yield f"event: {event_type}\ndata: {payload}\n\n"
+
+    return Response(
+        stream(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+        },
+    )
 
 
 if __name__ == '__main__':
