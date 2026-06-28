@@ -74,11 +74,12 @@ You need a Google Earth Engine account with a cloud project enabled.
 pip install -r requirements.txt
 ```
 
-3. Create a `.env` file from the example and set your Earth Engine project ID:
+3. Create a `.env` file from the example and set your Earth Engine project ID and optionally your Anthropic API key for AI-powered explanations:
 
 ```bash
 cp .env.example .env
 # edit .env and add EE_PROJECT_ID=your-project-id
+# edit .env and add ANTHROPIC_API_KEY=your-anthropic-api-key (optional)
 ```
 
 4. Run the server:
@@ -126,9 +127,17 @@ Understanding what actually changed. The system classifies land into five catego
 
 Where did it change the most. Break the region into sub areas and rank them by change intensity. The output will be a ranked list of neighborhoods and a heatmap showing which pockets experienced rapid development, deforestation, or other significant transformations.
 
-### Phase 4: AI Satellite Intelligence Assistant [Planned]
+### Phase 4: AI Satellite Intelligence Assistant [Implemented]
 
-An LLM powered analysis layer that converts raw satellite data into human readable reports. Ask a question like "How did Pune change between 2020 and 2026?" and get a detailed narrative with visual change maps, key statistics, areas of major transformation, and environmental and urban development insights.
+An LLM powered analysis layer that converts raw satellite data into human readable reports. Ask a question like "How did Pune change between 2020 and 2026?" and get a detailed narrative with visual change maps, key statistics, areas of major transformation, and environmental and urban development insights. This feature is available via the optional question box in the sidebar.
+
+## AI Assistant Usage
+
+To use the AI-powered explanation feature:
+1. Obtain an API key from Anthropic (https://console.anthropic.com/).
+2. Add the key to your `.env` file as `ANTHROPIC_API_KEY=your-key-here`.
+3. When generating a map, optionally enter a question in the "Ask a question (optional)" textarea.
+4. Click "Generate Map". After the map loads, an explanation will appear below the form in the sidebar.
 
 ## Known Limitations
 

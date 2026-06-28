@@ -14,6 +14,7 @@
             <div class="sidebar-header">
                 <h1 class="logo-text">GeoVision</h1>
                 <p class="subtitle">Earth Engine Temporal Comparison</p>
+                <a href="/chat" class="nav-link-chat" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:13px;color:#0071e3;text-decoration:none;font-weight:500;transition:opacity 0.2s;">💬 AI Chat Assistant →</a>
             </div>
 
             <form id="control-form" class="controls-container">
@@ -35,6 +36,13 @@
                     <label for="after_date">After Date</label>
                     <div class="input-container">
                         <input type="text" id="after_date" name="after_date" placeholder="Select After Date" value="2024-01-01">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="question">Ask a question (optional)</label>
+                    <div class="input-container">
+                        <textarea id="question" name="question" rows="3" placeholder="e.g., How much has Pune changed from 2022 to 2025?"></textarea>
                     </div>
                 </div>
 
@@ -65,6 +73,7 @@
                     <span class="btn-text">Generate Map</span>
                     <span class="loader"></span>
                 </button>
+                <div id="answer-box" class="answer-box" style="margin-top:15px; padding:10px; background:#f8f9fa; border-radius:5px; font-size:14px; color:#333; min-height:20px;"></div>
             </form>
         </aside>
 
