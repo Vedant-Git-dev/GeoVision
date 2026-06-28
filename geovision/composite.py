@@ -24,22 +24,6 @@ def mask_scl(image: ee.Image) -> ee.Image:
     return image.updateMask(mask).copyProperties(image, ["system:index"])
 
 
-def join_cloudless(sr_col, aoi, date_range):
-    """Attach per-pixel cloud probability to each S2 scene and mask cloudy pixels."""
-    cloud_col = (
-        ee.ImageCollection("COPERNICUS/S2_CLOUD_PROBABILITY")
-        .filterBounds(aoi).filterDate(date_range.start, date_range.end)
-    )
-
-    join = ee.Join.saveFirst("cloud_prob")
-    condition = ee.Filter.equals(leftField="system:index", rightField="system:index")
-    joined_col = ee.ImageCollection(join.apply(sr_col, cloud_col, condition))
-
-    def _mask_prob(img):
-        prob_img = ee.Image(img.get("cloud_prob")).select("probability")
-        return img.updateMask(prob_img.lt(config.CLOUD_PROB_THRESHOLD))
-
-    return joined_col.map(_mask_prob)
 
 
 def build_composite(aoi, date_range: DateRange, label: str) -> ee.Image:
@@ -66,11 +50,48 @@ def build_composite(aoi, date_range: DateRange, label: str) -> ee.Image:
         sr_col = col
         log.warning("[%s] No clear scenes found! Falling back to all available scenes.", label)
 
-    sr_col = join_cloudless(sr_col, aoi, date_range).map(mask_scl)
-    count = sr_col.size().getInfo()
+
+        #---------------- May use this if needed in future but right now it is not needed as we are using SCL masking ----------------
+
+# def join_cloudless(sr_col, aoi, date_range):
+#     """Attach per-pixel cloud probability to each S2 scene and mask cloudy pixels."""
+#     cloud_col = (
+#         ee.ImageCollection("COPERNICUS/S2_CLOUD_PROBABILITY")
+#         .filterBounds(aoi).filterDate(date_range.start, date_range.end)
+#     )
+
+#     join = ee.Join.saveFirst("cloud_prob")
+#     condition = ee.Filter.equals(leftField="system:index", rightField="system:index")
+#     joined_col = ee.ImageCollection(join.apply(sr_col, cloud_col, condition))
+
+#     def _mask_prob(img):
+#         prob_img = ee.Image(img.get("cloud_prob")).select("probability")
+#         return img.updateMask(prob_img.lt(config.CLOUD_PROB_THRESHOLD))
+
+#     return joined_col.map(_mask_prob)
+
+#     sr_col = join_cloudless(sr_col, aoi, date_range).map(mask_scl)
+#     count = sr_col.size().getInfo()
+
+        #---------------- May use this if needed in future but right now it is not needed as we are using SCL masking ----------------
+
+# Using SCL masking instead of cloud probability masking for now
+    masked_col = sr_col.map(mask_scl)
+    count = masked_col.size().getInfo()
+
+    
     
     if count == 0:
         raise RuntimeError(f"No Sentinel-2 scenes for '{label}' even after removing cloud filters. The region may be unmapped for this period. Please try a different date range.")
         
     log.info("[%s] %d scenes — median.", label, count)
-    return sr_col.median().clip(aoi)
+    
+    masked_comp = masked_col.median().clip(aoi)
+    raw_comp = sr_col.median().clip(aoi)
+    
+    
+# Using SCL masking instead of cloud probability masking for now
+
+    # Blend the clear pixels over the raw median to prevent transparent holes
+    # (which would appear as black/missing map areas on the frontend).
+    return raw_comp.blend(masked_comp)

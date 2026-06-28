@@ -36,7 +36,7 @@ def compute_land_cover_stats(
             reducer=ee.Reducer.frequencyHistogram(),
             geometry=aoi,
             scale=scale,
-            maxPixels=1e9,
+            maxPixels=1e7,
             bestEffort=True,
         ).get("signature_label")
 

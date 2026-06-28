@@ -401,7 +401,9 @@
         }
         const beforeOverlays = {};
         if (config.land_cover_before_tiles) {
-            beforeOverlays['Land Cover'] = L.tileLayer(config.land_cover_before_tiles, { maxZoom: 19, opacity: 0.8 });
+            const lcBefore = L.tileLayer(config.land_cover_before_tiles, { maxZoom: 19, opacity: 0.8 });
+            beforeOverlays['Land Cover'] = lcBefore;
+            lcBefore.addTo(beforeMap);
         }
         if (Object.keys(beforeOverlays).length > 0) {
             L.control.layers(null, beforeOverlays, { collapsed: true, position: 'topright' }).addTo(beforeMap);
@@ -418,7 +420,9 @@
             changeMask.addTo(afterMap);
         }
         if (config.land_cover_after_tiles) {
-            afterOverlays['Land Cover'] = L.tileLayer(config.land_cover_after_tiles, { maxZoom: 19, opacity: 0.8 });
+            const lcAfter = L.tileLayer(config.land_cover_after_tiles, { maxZoom: 19, opacity: 0.8 });
+            afterOverlays['Land Cover'] = lcAfter;
+            lcAfter.addTo(afterMap);
         }
         if (Object.keys(afterOverlays).length > 0) {
             L.control.layers(null, afterOverlays, { collapsed: true, position: 'topright' }).addTo(afterMap);
@@ -455,6 +459,31 @@
         }
         syncMap(beforeMap, afterMap);
         syncMap(afterMap, beforeMap);
+
+        // ── Sync overlays between the two maps ──
+        let syncingOverlays = false;
+        function syncOverlays(source, target, sourceOverlays, targetOverlays) {
+            source.on('overlayadd', function(e) {
+                if (syncingOverlays) return;
+                const name = e.name;
+                if (targetOverlays[name] && !target.hasLayer(targetOverlays[name])) {
+                    syncingOverlays = true;
+                    targetOverlays[name].addTo(target);
+                    syncingOverlays = false;
+                }
+            });
+            source.on('overlayremove', function(e) {
+                if (syncingOverlays) return;
+                const name = e.name;
+                if (targetOverlays[name] && target.hasLayer(targetOverlays[name])) {
+                    syncingOverlays = true;
+                    target.removeLayer(targetOverlays[name]);
+                    syncingOverlays = false;
+                }
+            });
+        }
+        syncOverlays(beforeMap, afterMap, beforeOverlays, afterOverlays);
+        syncOverlays(afterMap, beforeMap, afterOverlays, beforeOverlays);
 
         // ── Invalidate sizes ──
         setTimeout(function () {
