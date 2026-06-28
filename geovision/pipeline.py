@@ -10,7 +10,7 @@ import ee
 from .types import DateRange
 from .ee_init import init_ee
 from .geocode import resolve_location
-from .boundary import get_district_aoi
+from .boundary import get_district_aoi, get_city_aoi
 from .settlements import get_settlements
 from .composite import build_composite
 from .dynamic_world import build_dw_composite
@@ -34,8 +34,13 @@ def run_pipeline(
     before_date: str = config.DEFAULT_BEFORE_DATE,
     after_date: str = config.DEFAULT_AFTER_DATE,
     project_id: str | None = config.EE_PROJECT_ID,
+    city: str | None = None,
 ) -> dict:
     """Run the full change-detection pipeline.
+
+    Args:
+        city: If provided, analyze only this city/town boundary instead
+              of the full district.  e.g. "Kharadi, Pune, India".
 
     Returns:
         A config dict with center, tile URLs, labels, and AOI geometry —
@@ -47,9 +52,14 @@ def run_pipeline(
     init_ee(project_id)
 
     loc = resolve_location(location_query, config.DEFAULT_LAT, config.DEFAULT_LON, location_query)
-    aoi, district_name = get_district_aoi(loc.lat, loc.lon)
 
-    log.info("Fetching AOI geometry and discovering settlements in %s...", district_name)
+    if city:
+        log.info("City-level analysis requested: %s", city)
+        aoi, area_name = get_city_aoi(city, loc.lat, loc.lon)
+    else:
+        aoi, area_name = get_district_aoi(loc.lat, loc.lon)
+
+    log.info("Fetching AOI geometry and discovering settlements in %s...", area_name)
     aoi_geojson = aoi.getInfo()
     settlements = get_settlements(aoi_geojson)
 
@@ -108,6 +118,7 @@ def run_pipeline(
         "before_label": before_date,
         "after_label": after_date,
         "aoi": aoi_geojson,
-        "district_name": district_name,
+        "area_name": area_name,
+        "is_city_analysis": city is not None,
         "settlements": settlements,
     }

@@ -101,7 +101,7 @@ GAUL_LEVEL2 = "FAO/GAUL/2015/level2"
 # Settlement discovery (OSMnx)
 # ---------------------------------------------------------------------------
 
-SETTLEMENT_PLACE_TAGS = ["city", "town"]
+SETTLEMENT_PLACE_TAGS = ["city", "town", "village", "hamlet", "suburb", "neighbourhood"]
 
 # ---------------------------------------------------------------------------
 # Default parameters (used by app.py and pipeline.py)

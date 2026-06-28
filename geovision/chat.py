@@ -35,7 +35,8 @@ Always respond with valid JSON with the following schema:
 {
   "intent": "chat" | "analyze",
   "reply": "Your conversational response to the user. If intent is 'chat', this is what the user sees. If intent is 'analyze', leave this null.",
-  "location": "The place name (e.g. 'Pune, India') or null",
+  "location": "The full place name (e.g. 'Kharadi, Pune, India') or null",
+  "city": "The specific city/town/sub-area if the user mentioned one (e.g. 'Kharadi, Pune'). null if only a district/region is given.",
   "before_date": "YYYY-MM-DD or null",
   "after_date": "YYYY-MM-DD or null",
   "question": "The core question rephrased for analysis, if applicable."
@@ -48,6 +49,8 @@ Rules:
   - If the user confirms a parameter you previously asked about (e.g., "yes", "yepp", "correct"), set intent to "analyze" using the established location and dates.
   - "between 2022 and 2024" means before_date: "2022-01-01", after_date: "2024-01-01".
   - If only years are given, default to January 1st.
+  - city vs location: "location" is the full place string. "city" is set ONLY when the user names a specific sub-area within a district (e.g. "Kharadi" in Pune district, "Whitefield" in Bangalore district). If the user only names a district/city like "Pune" or "Bangalore", set city to null — the system will analyze the full district.
+  - For city, include the parent district for disambiguation: "Kharadi, Pune, India" not just "Kharadi".
 """
 
 _PARSE_USER_TEMPLATE = 'Extract parameters from this message: "{message}"'
@@ -128,9 +131,10 @@ def process_chat_message(user_message: str, history: list = None) -> Dict[str, A
 
     intent = parsed.get("intent", "chat")
     location = parsed.get("location")
+    city = parsed.get("city")
     before_date = _validate_date(parsed.get("before_date"))
     after_date = _validate_date(parsed.get("after_date"))
-    
+
     # If conversational or missing parameters, just chat back
     if intent == "chat" or not location or not before_date or not after_date:
         reply = parsed.get("reply")
@@ -147,8 +151,9 @@ def process_chat_message(user_message: str, history: list = None) -> Dict[str, A
 
     # Step 2 — Run the change-detection pipeline
     log.info(
-        "Running pipeline: location=%s, before=%s, after=%s",
+        "Running pipeline: location=%s, city=%s, before=%s, after=%s",
         location,
+        city,
         before_date,
         after_date,
     )
@@ -157,6 +162,7 @@ def process_chat_message(user_message: str, history: list = None) -> Dict[str, A
         before_date=before_date,
         after_date=after_date,
         project_id=EE_PROJECT_ID,
+        city=city,
     )
 
     # Step 3 — Generate explanation
@@ -173,6 +179,7 @@ def process_chat_message(user_message: str, history: list = None) -> Dict[str, A
         "success": True,
         "parsed": {
             "location": location,
+            "city": city,
             "before_date": before_date,
             "after_date": after_date,
         },

@@ -66,7 +66,7 @@ def generate_explanation(
         )
 
     # Extract relevant info from config
-    district_name = config.get("district_name", "the area")
+    district_name = config.get("area_name", "the area")
     stats = config.get("land_cover_stats", {})
     settlements = config.get("settlements", [])
     center = config.get("center", [0, 0])

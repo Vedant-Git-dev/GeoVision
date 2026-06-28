@@ -257,6 +257,9 @@
         if (parsed.location) {
             container.appendChild(makePill('<i data-lucide="map-pin"></i>', parsed.location));
         }
+        if (parsed.city) {
+            container.appendChild(makePill('<i data-lucide="building-2"></i>', parsed.city));
+        }
         if (parsed.before_date) {
             container.appendChild(makePill('<i data-lucide="calendar"></i>', 'Before: ' + parsed.before_date));
         }
