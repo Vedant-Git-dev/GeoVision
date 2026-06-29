@@ -5,6 +5,30 @@
 (function () {
     'use strict';
 
+    // ─── Theme Toggle ───
+    const themeToggle = document.getElementById('theme-toggle');
+    const savedTheme = localStorage.getItem('geovision-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    function setThemeIcon(theme) {
+        if (!themeToggle) return;
+        themeToggle.innerHTML = theme === 'light'
+            ? '<i data-lucide="moon"></i>'
+            : '<i data-lucide="sun"></i>';
+        if (window.lucide) lucide.createIcons();
+    }
+    setThemeIcon(savedTheme);
+
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function () {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('geovision-theme', next);
+            setThemeIcon(next);
+        });
+    }
+
     // ─── DOM References ───
     const form = document.getElementById('chat-form');
     const input = document.getElementById('chat-input');
@@ -568,13 +592,7 @@
 
     function buildExplanation(text) {
         const section = createElement('div', 'explanation-section');
-        // Split on double-newline for paragraphs, otherwise single block
-        const paragraphs = text.split(/\n\n+/);
-        paragraphs.forEach(function (para) {
-            const p = document.createElement('p');
-            p.textContent = para.trim();
-            section.appendChild(p);
-        });
+        section.innerHTML = marked.parse(text);
         return section;
     }
 

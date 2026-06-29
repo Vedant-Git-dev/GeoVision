@@ -93,7 +93,7 @@ Notable settlements in the area: {settlements_text}
 
 The user asks: "{question}"
 
-Please provide a clear, concise, and informative answer in plain language. Focus on interpreting what the changes mean for the area, highlighting any significant trends, environmental impacts, or urban development patterns. Use the data to support your explanations. If the question cannot be answered from the available data, say so clearly and suggest what additional information would be needed."""
+Please provide a clear, concise, and informative answer in plain language. Focus on interpreting what the changes mean for the area, highlighting any significant trends, environmental impacts, or urban development patterns. Use the data to support your explanations. If the question cannot be answered from the available data, say so clearly and suggest what additional information would be needed. Give markdown formatting where appropriate."""
     else:
         user_prompt = f"""You are an expert satellite imagery analyst specializing in land cover change detection.
 You have analyzed satellite images of {district_name} from {before_date} to {after_date} using Google Earth Engine and Dynamic World land cover classification.
@@ -107,7 +107,7 @@ Land cover changes:
 
 Notable settlements in the area: {settlements_text}
 
-Please provide a clear, concise, and informative summary of what changed in this area during this period. Highlight the most significant transitions, discuss potential causes (e.g., urban expansion, deforestation, agricultural changes, water body changes), and mention any notable environmental or societal implications. Use the data to support your explanations."""
+Please provide a clear, concise, and informative summary of what changed in this area during this period. Highlight the most significant transitions, discuss potential causes (e.g., urban expansion, deforestation, agricultural changes, water body changes), and mention any notable environmental or societal implications. Use the data to support your explanations. Give Markdown formatting where appropriate."""
 
     try:
         response = client.chat.completions.create(
