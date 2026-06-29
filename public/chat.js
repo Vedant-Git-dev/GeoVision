@@ -389,21 +389,23 @@
         const beforeMap = L.map(beforeMapId, mapOpts);
         const afterMap = L.map(afterMapId, mapOpts);
 
-        // Dark basemap on both
-        const basemapUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-        const basemapOpts = { subdomains: 'abcd', maxZoom: 19 };
-        L.tileLayer(basemapUrl, basemapOpts).addTo(beforeMap);
-        L.tileLayer(basemapUrl, basemapOpts).addTo(afterMap);
+        // ── Satellite basemap on both ──
+        const esriUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+        L.tileLayer(esriUrl, { maxZoom: 18 }).addTo(beforeMap);
+        L.tileLayer(esriUrl, { maxZoom: 18 }).addTo(afterMap);
 
         // ── Before Map Layers ──
         if (config.before_tiles) {
             L.tileLayer(config.before_tiles, { maxZoom: 19, opacity: 0.9 }).addTo(beforeMap);
         }
         const beforeOverlays = {};
+        if (config.change_mask_tiles) {
+            const changeMaskBefore = L.tileLayer(config.change_mask_tiles, { maxZoom: 19, opacity: 0.7 });
+            beforeOverlays['Change Mask'] = changeMaskBefore;
+        }
         if (config.land_cover_before_tiles) {
             const lcBefore = L.tileLayer(config.land_cover_before_tiles, { maxZoom: 19, opacity: 0.8 });
             beforeOverlays['Land Cover'] = lcBefore;
-            lcBefore.addTo(beforeMap);
         }
         if (Object.keys(beforeOverlays).length > 0) {
             L.control.layers(null, beforeOverlays, { collapsed: true, position: 'topright' }).addTo(beforeMap);
@@ -415,14 +417,12 @@
         }
         const afterOverlays = {};
         if (config.change_mask_tiles) {
-            const changeMask = L.tileLayer(config.change_mask_tiles, { maxZoom: 19, opacity: 0.7 });
-            afterOverlays['Change Mask'] = changeMask;
-            changeMask.addTo(afterMap);
+            const changeMaskAfter = L.tileLayer(config.change_mask_tiles, { maxZoom: 19, opacity: 0.7 });
+            afterOverlays['Change Mask'] = changeMaskAfter;
         }
         if (config.land_cover_after_tiles) {
             const lcAfter = L.tileLayer(config.land_cover_after_tiles, { maxZoom: 19, opacity: 0.8 });
             afterOverlays['Land Cover'] = lcAfter;
-            lcAfter.addTo(afterMap);
         }
         if (Object.keys(afterOverlays).length > 0) {
             L.control.layers(null, afterOverlays, { collapsed: true, position: 'topright' }).addTo(afterMap);

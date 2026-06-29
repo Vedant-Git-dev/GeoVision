@@ -12,7 +12,6 @@ from .types import DateRange
 from .ee_init import init_ee
 from .geocode import resolve_location
 from .boundary import get_district_aoi, get_city_aoi
-from .settlements import get_settlements
 from .composite import build_composite
 from .dynamic_world import build_dw_composite
 from .changes import detect_changes, get_change_vis_params
@@ -82,9 +81,8 @@ def run_pipeline(
             "status": "in_progress",
         })
 
-    log.info("Fetching AOI geometry and discovering settlements in %s...", area_name)
+    log.info("Fetching AOI geometry for %s...", area_name)
     aoi_geojson = aoi.getInfo()
-    settlements = get_settlements(aoi_geojson)
 
     if on_progress:
         on_progress({
@@ -179,5 +177,5 @@ def run_pipeline(
         "aoi": aoi_geojson,
         "area_name": area_name,
         "is_city_analysis": city is not None,
-        "settlements": settlements,
+        # "settlements": settlements,
     }

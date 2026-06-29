@@ -32,11 +32,6 @@ def index():
     return send_from_directory('public', 'chat.html')
 
 
-@app.route('/classic')
-def classicview():
-    return send_from_directory('public', 'index.html')
-
-
 @app.route('/check-ee')
 def check_ee():
     try:
@@ -65,7 +60,6 @@ def generate():
 
         result = {
             "success": True,
-            "map_url": "maps/default_map.html",
             "config": config,
         }
 
@@ -115,7 +109,6 @@ def generate_stream():
 
             result = {
                 "success": True,
-                "map_url": "maps/default_map.html",
                 "config": config,
             }
 
@@ -232,7 +225,5 @@ def api_chat_stream():
 if __name__ == '__main__':
     print("=========================================")
     print(" GeoVision - Starting on http://127.0.0.1:5000")
-    print("  AI Chat:    http://127.0.0.1:5000/")
-    print("  Classic UI: http://127.0.0.1:5000/classic")
     print("=========================================")
     app.run(debug=True, port=5000)
