@@ -1,154 +1,355 @@
 # GeoVision
 
-GeoVision is a web application that classifies land cover from satellite imagery and identifies how it transitioned between two points in time. You pick a place and choose two dates, and it tells you what kind of land was there before, what kind of land is there now, and which specific transitions occurred between them. A forest that became buildings, a water body that dried out, or a city that got greener are all mapped and quantified. It runs on Google Earth Engine, so all computation happens server side and you never have to download terabytes of imagery yourself.
+Satellite change detection powered by Google Earth Engine, Dynamic World land cover classification, and AI driven natural language explanations.
 
-Instead of computing hand-crafted spectral indices to classify land cover, GeoVision uses Google Dynamic World, a globally consistent deep learning dataset that provides per-pixel class probabilities at 10 meter resolution. This means the classification is already trained and calibrated across the entire planet, so you get reliable labels without needing training data, model training, or threshold tweaking for each region.
+## Overview
 
-The core idea is a temporal comparison. Take two snapshots in time, classify what kind of land cover each pixel represents using Google Dynamic World, then flag pixels where the cover actually shifted from one class to another. What makes GeoVision different from a naive pixel differencing approach is a three gate filter that kills false positives from seasonal variation, cloud shadows, and classification noise.
+Existing land-cover products often expose raw classifications but don't help users ask natural language questions or understand changes. GeoVision combines satellite imagery, land-cover analysis, and AI explanations into an interactive system for exploring environmental change.
 
-## How It Works
+GeoVision is a web application that analyzes satellite imagery to detect land cover changes over time. It leverages Sentinel 2 multispectral data and Dynamic World probability maps to identify transitions between land cover classes such as forest, urban, water, agriculture, and bare land. The system features an AI chat interface that lets users ask questions about land use changes in natural language, with real time streaming updates and detailed AI generated explanations.
 
-You enter a location and two dates in the sidebar. The backend does the rest.
+<p align="center">
+  <img src="images/image1.png" width="900">
+</p>
 
-1. Your place name gets geocoded into coordinates via OpenStreetMap
-2. The official district boundary is fetched from FAO GAUL (UN-recognized administrative boundaries at Level 2) via Earth Engine — if no district is found, it falls back to a 10 km buffer
-3. Major cities and towns within the district are discovered via OSMnx and displayed as labeled markers on the map
-4. Each date is expanded into a 90 day window so there are enough satellite scenes for a stable composite
-4. Sentinel 2 imagery is fetched for both windows, clouds are stripped out using scene level and pixel level filters plus the Scene Classification Layer, and a cloud free median composite is built for each timeline
-5. Google Dynamic World probability bands are fetched for the same windows and reduced to median composites
-6. The 9 class Dynamic World probabilities are mapped into a 5 class signature schema (water, forest, bare land, agriculture, urban) with raw proportions kept as is to avoid inflating ambiguous pixels
-7. A rule engine runs over 6 approved transitions with three gates per pixel:
+<p align="center">
+  <img src="images/image2.png" width="900">
+</p>
 
-   * **Confidence gate**: the from class at T1 and the to class at T2 must both have proportion at or above 0.50
-   * **Surge gate**: the raw probability of the target class must have increased by at least 0.25 between timelines
-   * **Spectral gate**: transitions to forest are cross checked against NDVI and transitions to water are cross checked against NDWI from the Sentinel 2 composite, so shadow induced false water and seasonal greenup get rejected
+## Features
 
-8. Land cover statistics are computed as per class pixel counts converted to percentages, with delta between timelines
-9. Everything comes back as tile URLs that a Leaflet map renders in a dual panel view
+* **Natural Language Chat Interface**: Ask about land use changes in plain English. The AI parses your intent, location, and date range automatically.
+* **Sentinel 2 Composite Generation**: Cloud filtered median composites with Scene Classification Layer masking for clean, analysis ready imagery.
+* **Dynamic World Analysis**: Per pixel probability classification into 9 land cover classes using Google's Dynamic World dataset.
+* **Change Detection Engine**: Rule based detection with confidence gates, probability surge validation, and spectral cross validation using NDVI and NDWI indices.
+* **AI Powered Explanations**: LLM generated summaries of detected changes with context about environmental and societal implications.
+* **Interactive Maps**: Leaflet based visualization with satellite basemaps, before/after composites, change masks, and land cover classification layers.
+* **Real Time Streaming**: Server Sent Events provide live pipeline progress updates from geocoding through final analysis.
+* **Administrative Boundary Support**: District level analysis via FAO GAUL Level 2 boundaries or city/town level via OpenStreetMap.
+* **Land Cover Statistics**: Quantitative breakdowns with per class percentages and delta calculations.
+* **Light/Dark Theme Toggle**: Persistent theme preference with smooth transitions.
 
-The result is a split screen map where the left panel shows the before image, the right shows the after image, and a color coded transition overlay can be toggled on. Panning and zooming stay synced between both panels.
 
-## Tech Stack
+## Technology Stack
 
-**Backend**: Python, Flask, Google Earth Engine Python API, geopy (Nominatim geocoding), osmnx (settlement discovery), shapely (geometry conversion), python-dotenv
+* **Backend**: Python, Flask
+* **Earth Engine**: Google Earth Engine (Python API)
+* **Satellite Data**: Sentinel 2 SR (COPERNICUS/S2_SR_HARMONIZED), Dynamic World (GOOGLE/DYNAMICWORLD/V1)
+* **Geocoding**: Nominatim (geopy)
+* **Boundary Data**: FAO GAUL 2015 (Level 2), OpenStreetMap (OSMnx)
+* **LLM**: Groq API (Llama 3.3 70B Versatile)
+* **Frontend**: Vanilla JavaScript, Leaflet, Lucide icons, Marked.js
+* **Spatial**: Shapely, GeoPandas (via OSMnx)
 
-**Frontend**: Vanilla HTML/CSS/JS, Leaflet.js for maps, Flatpickr for date picking, Esri World Imagery basemap
 
-**Data sources**: Copernicus Sentinel 2 SR Harmonized (optical imagery), Copernicus S2 Cloud Probability, Google Dynamic World V1 (land cover probabilities), FAO GAUL 2015 Level 2 (official district boundaries), OpenStreetMap (settlement names and locations)
+## Architecture
 
-## Project Structure
+The application follows a modular pipeline architecture:
 
 ```
-geovision/
-  __init__.py         package entry, exposes run_pipeline
-  config.py           all constants and thresholds in one place
-  types.py            Location and DateRange dataclasses
-  ee_init.py          Earth Engine authentication
-  geocode.py          place name to coordinates
-  boundary.py         FAO GAUL district boundary lookup
-  settlements.py      OSMnx settlement discovery (cities and towns)
-  composite.py        Sentinel 2 cloud masking and median compositing
-  dynamic_world.py    Dynamic World probability compositing
-  signature.py        9 band to 5 class mapping with dominance logic
-  spectral.py         NDVI and NDWI from Sentinel 2
-  changes.py          rule based transition detection engine
-  stats.py            per class land cover area statistics
-  pipeline.py         orchestrates the full pipeline
-
-public/
-  index.html          sidebar with controls, map iframe, legends
-  style.css           Apple inspired design system
-  script.js           form handling, API calls, iframe communication
-
-app.py                Flask server, three routes
+Geocode Location
+       |
+       v
+Resolve AOI (GAUL District / OSM City)
+       |
+       v
+Fetch Sentinel 2 Composite (Before)
+       |
+       v
+Fetch Sentinel 2 Composite (After)
+       |
+       v
+Build Dynamic World Probability Maps (Before + After)
+       |
+       v
+Detect Changes (Rule Engine + Spectral Cross Validation)
+       |
+       v
+Compute Land Cover Statistics
+       |
+       v
+Generate AI Explanation (Groq LLM)
 ```
 
-## Getting Started
+### Pipeline Steps
 
-You need a Google Earth Engine account with a cloud project enabled.
+1. **Geocoding**: Resolves user provided location strings to lat/lon coordinates via Nominatim.
+2. **AOI Resolution**: Looks up the corresponding FAO GAUL Level 2 district boundary, or uses OSM to find a city/town polygon.
+3. **Composite Building**: Fetches Sentinel 2 SR Harmonized scenes, applies cloud filtering and SCL masking, then computes a median composite for each time period.
+4. **Dynamic World Processing**: Medians Dynamic World probability bands to create stable per pixel class distributions.
+5. **Signature Mapping**: Maps 9 band DW probabilities into a 5 class schema (Water, Forest, Bare Land, Agriculture, Urban) with dominance margins and confidence floors.
+6. **Change Detection**: Applies a three gate rule engine per approved transition:
+   * Confidence gate: both endpoints must exceed minimum class proportion
+   * Surge gate: target class probability must increase significantly
+   * Spectral gate: NDVI/NDWI cross validation to reject false positives
+7. **Statistics**: Computes per class pixel counts and percentages using GEE reduceRegion.
+8. **Explanation**: Formats results and land cover stats into a prompt for the Groq LLM to generate natural language insights.
 
-1. Clone the repository
-2. Install Python dependencies:
 
+## Installation
+
+### Prerequisites
+
+* Python 3.10 or higher
+* A Google Earth Engine account with a registered cloud project
+* A Groq API key (for AI explanations and chat features)
+
+### Setup
+
+1. Clone the repository:
+```bash
+git clone https://github.com/Vedant-Git-dev/GeoVision.git
+```
+
+
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Create a `.env` file from the example and set your Earth Engine project ID and optionally your Anthropic API key for AI-powered explanations:
-
+3. Authenticate with Google Earth Engine:
 ```bash
-cp .env.example .env
-# edit .env and add EE_PROJECT_ID=your-project-id
-# edit .env and add ANTHROPIC_API_KEY=your-anthropic-api-key (optional)
+earthengine authenticate
 ```
 
-4. Run the server:
+4. Configure environment variables:
+```bash
+cp .env.example .env
+# Edit .env and set your EE_PROJECT_ID and GROQ_API_KEY
+```
 
+5. Run the application:
 ```bash
 python app.py
 ```
 
-5. Open `http://127.0.0.1:5000` in your browser
+The server will start on `http://127.0.0.1:5000`.
 
-On first run, Earth Engine will open a browser tab for OAuth authentication. After that, credentials are cached.
 
-## The Six Transitions
+## Configuration
 
-The detection engine tracks these specific land cover shifts:
+Configuration is centralized in `geovision/config.py`. Key settings include:
 
-| Transition | Color | What It Catches |
-|---|---|---|
-| Forest to Urban | red | deforestation and urbanization |
-| Water to Urban | blue | land reclamation from water bodies |
-| Forest to Water | sage | flooding or reservoir expansion |
-| Urban to Forest | teal | reforestation and greening |
-| Urban to Water | cyan | inundation or subsidence |
-| Water to Forest | steel blue | wetland establishment or drainage |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| DEFAULT_LOCATION | Pune, India | Fallback location for geocoding |
+| DEFAULT_BEFORE_DATE | 2023-11-01 | Default start date for analysis |
+| DEFAULT_AFTER_DATE | 2024-11-01 | Default end date for analysis |
+| DATE_WINDOW_DAYS | 90 | Days to expand around each target date |
+| MIN_CLASS_CONF | 0.45 | Minimum class proportion for confidence gate |
+| MIN_SIGNATURE_CONF | 0.25 | Minimum raw DW probability for signature dominance |
+| MIN_DOMINANCE_MARGIN | 0.05 | Lead margin over runner up class |
+| MIN_PROB_SURGE | 0.25 | Minimum probability increase for surge gate |
+| MAX_SCENE_CLOUD_PCT | 20 | Maximum cloud percentage per Sentinel 2 scene |
 
-These are not all possible transitions. They are the ones most useful to track and most reliable to detect given the noise characteristics of satellite data. Adding more transitions is straightforward in `config.py` but each one needs careful threshold tuning.
 
-## Architecture
+## API Endpoints
 
-The architecture follows a clear pipeline pattern. The Flask server is thin, just three routes. All logic lives in the `geovision` package where each module owns one step of the pipeline. Configuration is centralized so thresholds can be tuned without touching logic code. The frontend is deliberately simple with no build step and no framework, just a Leaflet map inside an iframe that reads tile URLs from localStorage.
+### `POST /generate`
 
-Three gates make the transition detection reliable. The confidence gate says both endpoints must be decisive, we do not flag a transition if we were not sure about either class label. The surge gate says the target class must have actually grown, which eliminates seasonal flicker where probabilities bounce around without real change. The spectral gate cross checks Dynamic World labels against independent Sentinel 2 spectral indices, catching cases where the classifier mislabels shadows as water or dry grassland as urban.
+Runs the satellite change detection pipeline synchronously.
 
-## Roadmap
+**Request Body:**
+```json
+{
+  "location": "Pune, India",
+  "before_date": "2023-11-01",
+  "after_date": "2024-11-01",
+  "question": "What changed?"
+}
+```
 
-### Phase 1: Change Detection [Complete]
+**Response:**
+```json
+{
+  "success": true,
+  "config": {
+    "center": [18.5936, 73.7301],
+    "before_tiles": "https://...",
+    "after_tiles": "https://...",
+    "change_mask_tiles": "https://...",
+    "land_cover_before_tiles": "https://...",
+    "land_cover_after_tiles": "https://...",
+    "land_cover_stats": { ... },
+    "aoi": { ... },
+    "area_name": "Pune",
+    "settlements": [ ... ]
+  },
+  "explanation": "AI generated summary..."
+}
+```
 
-The baseline. Given two satellite images of the same place from different times, detect whether change happened. The output is a change mask highlighting modified regions and the percentage of area that shifted.
+### `POST /generate/stream`
 
-### Phase 2: Land Cover Classification [Current]
+Same as `/generate` but streams progress as Server Sent Events.
 
-Understanding what actually changed. The system classifies land into five categories (water, forest, bare land, agriculture, urban) for both timelines, quantifies how each category shifted, and renders a color coded transition visualization. This phase introduced Dynamic World integration, the five class signature schema, the three gate detection engine, the spectral cross validation layer, and the land cover statistics panel.
+**Event Types:**
+* `progress`: Pipeline step updates with step name, number, and total
+* `result`: Final analysis result
+* `error`: Error details if the pipeline fails
 
-### Phase 3: Geographic Change Analysis [Planned]
+### `POST /api/chat`
 
-Where did it change the most. Break the region into sub areas and rank them by change intensity. The output will be a ranked list of neighborhoods and a heatmap showing which pockets experienced rapid development, deforestation, or other significant transformations.
+Processes a natural language chat message and returns an analysis or conversational reply.
 
-### Phase 4: AI Satellite Intelligence Assistant [Implemented]
+**Request Body:**
+```json
+{
+  "message": "What changed in Mumbai between 2020 and 2024?",
+  "history": []
+}
+```
 
-An LLM powered analysis layer that converts raw satellite data into human readable reports. Ask a question like "How did Pune change between 2020 and 2026?" and get a detailed narrative with visual change maps, key statistics, areas of major transformation, and environmental and urban development insights. This feature is available via the optional question box in the sidebar.
+### `POST /api/chat/stream`
 
-## AI Assistant Usage
+Chat endpoint with SSE streaming for real time pipeline progress.
 
-To use the AI-powered explanation feature:
-1. Obtain an API key from Anthropic (https://console.anthropic.com/).
-2. Add the key to your `.env` file as `ANTHROPIC_API_KEY=your-key-here`.
-3. When generating a map, optionally enter a question in the "Ask a question (optional)" textarea.
-4. Click "Generate Map". After the map loads, an explanation will appear below the form in the sidebar.
 
-## Known Limitations
+## Project Structure
 
-Processing is synchronous. A `/generate` call blocks for 10 to 60 seconds while Earth Engine computes. There is no progress feedback beyond the spinner.
+```
+.
+├── app.py                          # Flask application entry point
+├── requirements.txt                # Python dependencies
+├── .env.example                    # Environment variable template
+├── public/                         # Static frontend assets
+│   ├── chat.html                   # Main chat interface
+│   ├── chat.css                    # Chat styles with light/dark themes
+│   ├── chat.js                     # Client side chat logic
+│   └── style.css                   # Additional styles
+└── geovision/                      # Core application package
+    ├── __init__.py                 # Package initialization and logging
+    ├── config.py                   # Centralized constants and settings
+    ├── pipeline.py                 # Main pipeline orchestrator
+    ├── chat.py                     # Natural language intent parser and orchestrator
+    ├── explain.py                  # LLM explanation generator
+    ├── ee_init.py                  # Google Earth Engine initialization
+    ├── geocode.py                  # Nominatim geocoding wrapper
+    ├── boundary.py                 # FAO GAUL and OSM boundary lookup
+    ├── composite.py                # Sentinel 2 cloud masking and compositing
+    ├── dynamic_world.py            # Dynamic World probability compositing
+    ├── signature.py                # DW to 5 class signature mapping
+    ├── changes.py                  # Change detection rule engine
+    ├── stats.py                    # Land cover statistics computation
+    ├── settlements.py              # OSM settlement discovery
+    ├── spectral.py                 # Spectral index computation (NDVI/NDWI)
+    └── types.py                    # Core data types (Location, DateRange)
+```
 
-There is no server side caching. Every request recomputes everything from scratch.
 
-The detection covers six transitions. Agricultural changes, bare land shifts, and bidirectional regrowth beyond the six tracked paths are not detected.
+## Change Detection Methodology
 
-Flask runs in debug mode with a single thread. Not production ready.
+GeoVision uses a rigorous multi gate approach to minimize false positives:
 
-Only one user at a time since there is no authentication or session management.
+### Approved Transitions
 
-The 90 day window trades temporal precision for composite stability. Short events within a window are averaged out.
+The system monitors these specific land cover transitions:
+
+| From | To | Label | Color |
+|------|-----|-------|-------|
+| Forest | Urban | Forest to Urban | #f44336 |
+| Water | Urban | Water to Urban | #1976d2 |
+| Forest | Water | Forest to Water | #81c784 |
+| Urban | Forest | Urban to Forest | #009688 |
+| Urban | Water | Urban to Water | #00bcd4 |
+| Water | Forest | Water to Forest | #1e88e5 |
+
+### Three Gate Validation
+
+For a pixel to register as a valid transition, it must pass all three gates:
+
+1. **Confidence Gate**: Both the source and target class proportions must exceed `MIN_CLASS_CONF` (0.45) in their respective timelines. This ensures both endpoints are decisive classifications rather than noisy mixed pixels.
+
+2. **Surge Gate**: The target class's raw Dynamic World probability must have increased by at least `MIN_PROB_SURGE` (0.25) between the before and after periods. This catches genuine transitions rather than classification noise at the boundary.
+
+3. **Spectral Gate**: Independent spectral indices cross validate the Dynamic World labels. Transitions to forest require NDVI >= 0.3, and transitions to water require NDWI >= 0.1. This rejects shadows misclassified as water and senescent vegetation misclassified as bare land.
+
+### Signature Mapping
+
+Dynamic World provides 9 probability bands per pixel. GeoVision maps these to a simplified 5 class schema using raw (non normalized) probabilities with a dominance margin check. A class is only assigned if it beats every other class by at least 0.05 and has a raw proportion of at least 0.25. This prevents "tallest dwarf" errors where all classes have low confidence but one happens to be highest.
+
+
+## Land Cover Classes
+
+| Class | Color | Code |
+|-------|-------|------|
+| Water | Deep Blue | 0 |
+| Forest | Green | 1 |
+| Bare Land | Brown | 3 |
+| Agriculture | Yellow | 4 |
+| Urban | Red | 6 |
+
+
+## AI Chat Features
+
+The chat interface supports natural language queries such as:
+
+* "What changed in Mumbai between 2020 and 2024?"
+* "Show me deforestation in Amazon 2019 to 2023"
+* "Analyze urban growth in Bangalore from 2018 to 2024"
+* "How has the coastline changed in Dubai since 2017?"
+
+The chat parser maintains conversation history, reuses previously established parameters, and asks clarifying questions when location or dates are missing. It also supports city level granularity when users specify sub areas (e.g., "Kharadi, Pune" or "Whitefield, Bangalore").
+
+
+## Dependencies
+
+See `requirements.txt` for the full list. Key dependencies include:
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| earthengine_api | >=0.1.400 | Google Earth Engine Python API |
+| flask | >=3.0.0 | Web framework |
+| geopy | >=2.4.0 | Nominatim geocoding |
+| osmnx | >=1.9.0 | OpenStreetMap data retrieval |
+| shapely | >=2.0.0 | Geometric operations |
+| groq | >=0.9.0 | LLM client for explanations |
+| python_dotenv | >=1.0.0 | Environment variable management |
+
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| EE_PROJECT_ID | Yes | Google Earth Engine project ID |
+| GROQ_API_KEY | Yes | Groq API key for LLM features |
+
+
+## Data Sources
+
+* **Sentinel 2**: Copernicus Sentinel 2 SR Harmonized (10m resolution, 13 bands)
+* **Dynamic World**: Google Dynamic World V1 (10m resolution, 9 class probabilities)
+* **Boundaries**: FAO GAUL 2015 Level 2 (districts), OpenStreetMap (cities/towns)
+* **Settlements**: OpenStreetMap place tags (city, town, village, suburb, neighborhood)
+
+
+## Contributors
+
+This project was built collaboratively:
+
+**Vedant Pardeshi** ([Contact me](mailto:vedantpardeshi26@gmail.com))
+
+* Core pipeline architecture and modularization
+* Change detection engine with confidence and surge gating
+* FAO GAUL boundary integration and city level resolution
+* Land cover statistics computation
+* SSE streaming pipeline progress
+* Markdown rendering and light/dark theme toggle
+* Geocoding, Dynamic World compositing, and spectral cross validation
+
+**Bilal Rukundi** ([GitHub](https://github.com/Wayn-Git))
+
+* Frontend UI redesign to minimal theme and AI chat interface
+* Map rendering, satellite basemaps, and map recursion fixes
+* Google Earth Engine timeout handling and optimization
+* Scene classifier based cloud masking (performance improvement)
+* Initial satellite image fetching and area masking
+* Project roadmap and repository setup
+
+
+## Acknowledgments
+
+* Google Earth Engine for providing the computational platform and data catalog
+* Copernicus Programme for Sentinel 2 imagery
+* Google AI and partners for the Dynamic World dataset
+* OpenStreetMap contributors for boundary and settlement data
