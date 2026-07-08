@@ -86,35 +86,21 @@ void main() {
 `;
 
 function Blob({ scrollProgress }) {
-  const mesh = useRef(null);
-  const targetPosition = useRef(new Vector3(0, 0, 0));
-  const currentPosition = useRef(new Vector3(0, 0, 0));
-  
-  // Track mouse globally since canvas pointer-events are none
-  const mousePos = useRef({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      // Normalize to -1 to 1
-      mousePos.current.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mousePos.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
+  const mesh = useRef();
 
   const uniforms = useMemo(
     () => ({
       u_time: { value: 0 },
-      u_intensity: { value: 0.1 }, // Starts dormant
-      u_color: { value: new Color(0x222222) }, // Starts dark
+      u_intensity: { value: 0.1 },
+      u_color: { value: new Color(0x999999) }, // Starts as light grey wireframe
     }),
     []
   );
 
-  const activeColor = useMemo(() => new Color(0xffffff), []); // Orange/hot color when active
+  // Create stable color reference for interpolation
+  const activeColor = useMemo(() => new Color(0x000000), []); // Jet black wireframe
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const { clock } = state;
     if (mesh.current) {
       const material = mesh.current.material;
@@ -122,11 +108,11 @@ function Blob({ scrollProgress }) {
 
       // Tie intensity to scroll progress
       const p = scrollProgress.current || 0;
-      const targetIntensity = p > 0.05 ? 0.7 : 0.4; // Brighter dormant state
+      const targetIntensity = p > 0.05 ? 0.7 : 0.4; // Stronger distortion
       
-      // Interpolate color from warm dark orange to hot orange
+      // Interpolate color from light grey to jet black
       material.uniforms.u_color.value.lerpColors(
-        new Color(0x222222), // Visible, deep red/orange instead of near black
+        new Color(0x999999), // Dormant state (light grey)
         activeColor, 
         Math.min(1, p * 4) 
       );
@@ -137,10 +123,25 @@ function Blob({ scrollProgress }) {
         0.05
       );
 
-      // Follow mouse
-      targetPosition.current.set(mousePos.current.x * 0.8, mousePos.current.y * 0.8, 0);
-      currentPosition.current.lerp(targetPosition.current, 0.05);
-      mesh.current.position.copy(currentPosition.current);
+      // Apply scaling mathematically directly to the WebGL mesh instead of CSS
+      // This prevents the massive CSS canvas from exceeding GPU texture limits and disappearing
+      let scale = 1;
+      if (p <= 0.27) {
+        const t = p / 0.27;
+        scale = 1.0 + (t * 0.3); // 1 to 1.3
+      } else if (p <= 0.48) {
+        const t = (p - 0.27) / 0.21;
+        scale = 1.3 + (t * 0.2); // 1.3 to 1.5
+      } else if (p <= 0.67) {
+        const t = (p - 0.48) / 0.19;
+        scale = 1.5 + (t * 1.3); // 1.5 to 2.8
+      } else {
+        scale = 2.8;
+      }
+      
+      // Base scale is 1.8. Multiply by the dynamic scale.
+      const finalScale = 1.8 * scale;
+      mesh.current.scale.set(finalScale, finalScale, finalScale);
     }
   });
 
@@ -151,7 +152,8 @@ function Blob({ scrollProgress }) {
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
         uniforms={uniforms}
-        wireframe={false}
+        wireframe={true}
+        transparent={true}
       />
     </mesh>
   );

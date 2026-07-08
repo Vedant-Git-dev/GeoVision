@@ -160,12 +160,12 @@ export default function ChatUI() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-black text-gray-200">
+    <div className="flex flex-col h-screen bg-[#fafafa] text-gray-900">
       {/* Navbar */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/50 backdrop-blur-md">
+      <nav className="flex items-center justify-between px-6 py-4 border-b border-black/5 bg-white/50 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <Satellite className="text-white" size={24} />
-          <span className="font-bold text-xl text-white tracking-tight">GeoVision</span>
+          <Satellite className="text-black" size={24} />
+          <span className="font-bold text-xl text-black tracking-tight">GeoVision</span>
           <span className="px-2 py-0.5 text-xs font-bold bg-[#1c69d4] text-white rounded-md uppercase tracking-wider">AI</span>
         </div>
       </nav>
@@ -174,7 +174,7 @@ export default function ChatUI() {
       <div className="flex flex-1 overflow-hidden">
         
         {/* Left Side: Map / Progress */}
-        <div className="flex-1 transition-all duration-500 ease-in-out border-r border-white/10 relative bg-[#030303] flex items-center justify-center">
+        <div className="flex-1 transition-all duration-500 ease-in-out border-r border-black/5 relative bg-[#fcfcfc] flex items-center justify-center">
           {mapUrl ? (
             <iframe 
               ref={iframeRef}
@@ -194,41 +194,41 @@ export default function ChatUI() {
             <div className="flex flex-col items-center justify-center max-w-md w-full px-8 opacity-100 transition-opacity duration-500">
               <div className="w-full mb-8">
                 <div className="flex justify-between items-end mb-4">
-                  <span className="font-serif-italic text-3xl text-white">{progress.error ? 'Error' : progress.step}</span>
+                  <span className="font-serif-italic text-3xl text-black">{progress.error ? 'Error' : progress.step}</span>
                   <span className="text-sm font-medium tracking-widest text-[#1c69d4] uppercase mb-1">{progress.percent}%</span>
                 </div>
-                <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                <div className="h-1 w-full bg-black/5 rounded-full overflow-hidden">
                   <div 
                     className={`h-full transition-all duration-500 ${progress.error ? 'bg-red-500' : 'bg-[#1c69d4]'}`}
                     style={{ width: `${progress.percent}%` }}
                   ></div>
                 </div>
-                <div className="text-sm text-gray-400 mt-4 font-light tracking-wide">{progress.error || progress.detail}</div>
+                <div className="text-sm text-gray-500 mt-4 font-light tracking-wide">{progress.error || progress.detail}</div>
               </div>
-              <div className="flex items-center gap-3 text-xs tracking-[0.2em] uppercase text-white/40">
+              <div className="flex items-center gap-3 text-xs tracking-[0.2em] uppercase text-black/40">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#1c69d4] animate-pulse" />
                 Pipeline Active
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center text-white/10 transition-opacity duration-500">
-              <Globe size={64} strokeWidth={0.5} className="mb-6 opacity-50" />
-              <div className="font-serif text-2xl tracking-tight opacity-50">GeoVision Workspace</div>
-              <div className="text-[10px] uppercase tracking-[0.3em] mt-3 opacity-30">Awaiting Input</div>
+            <div className="flex flex-col items-center justify-center text-black/10 transition-opacity duration-500">
+              <Globe size={64} strokeWidth={0.5} className="mb-6 opacity-30" />
+              <div className="font-serif text-2xl tracking-tight opacity-40">GeoVision Workspace</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] mt-3 opacity-30 text-black">Awaiting Input</div>
             </div>
           )}
         </div>
 
         {/* Right Side: Chat */}
-        <div className="flex flex-col w-[450px] bg-[#0a0a0a] relative">
+        <div className="flex flex-col w-[450px] bg-white relative">
           
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center opacity-70">
-                <Globe size={48} className="text-gray-500 mb-6" strokeWidth={1} />
-                <h2 className="text-2xl font-bold text-white mb-2">What would you like to explore?</h2>
-                <p className="text-gray-400">Ask about land-use changes anywhere on Earth.</p>
+                <Globe size={48} className="text-gray-300 mb-6" strokeWidth={1} />
+                <h2 className="text-2xl font-bold text-black mb-2">What would you like to explore?</h2>
+                <p className="text-gray-500">Ask about land-use changes anywhere on Earth.</p>
               </div>
             ) : (
               messages.map((msg, i) => (
@@ -236,12 +236,12 @@ export default function ChatUI() {
                   <div className={`max-w-[90%] px-5 py-4 rounded-2xl ${
                     msg.role === 'user' 
                       ? 'bg-[#1c69d4] text-white rounded-br-none' 
-                      : 'bg-[#121212] border border-white/10 text-gray-200 rounded-bl-none shadow-lg'
+                      : 'bg-white border border-gray-100 text-gray-800 rounded-bl-none shadow-sm'
                   }`}>
                     {msg.role === 'user' ? (
                       msg.content
                     ) : (
-                      <div className="text-sm font-light leading-relaxed [&>p]:mb-4 last:[&>p]:mb-0 [&>h3]:text-lg [&>h3]:font-serif [&>h3]:mb-2 [&>h3]:text-white [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-4 [&>li]:mb-1 [&>strong]:font-semibold [&>strong]:text-white">
+                      <div className="text-sm font-light leading-relaxed [&>p]:mb-4 last:[&>p]:mb-0 [&>h3]:text-lg [&>h3]:font-serif [&>h3]:mb-2 [&>h3]:text-black [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-4 [&>li]:mb-1 [&>strong]:font-semibold [&>strong]:text-black">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {msg.content}
                         </ReactMarkdown>
@@ -256,14 +256,14 @@ export default function ChatUI() {
           </div>
 
           {/* Input Area */}
-          <div className="p-4 bg-[#0a0a0a] border-t border-white/10">
+          <div className="p-4 bg-white border-t border-black/5">
             {messages.length === 0 && (
               <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
                 {["What changed in Mumbai?", "Deforestation in Amazon"].map((prompt, i) => (
                   <button 
                     key={i}
                     onClick={() => handleSend(prompt)}
-                    className="flex-shrink-0 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-sm text-gray-300 transition-colors whitespace-nowrap"
+                    className="flex-shrink-0 px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-sm text-gray-600 transition-colors whitespace-nowrap"
                   >
                     {prompt}
                   </button>
@@ -271,13 +271,13 @@ export default function ChatUI() {
               </div>
             )}
             
-            <div className="relative flex items-end bg-white/5 border border-white/20 rounded-xl focus-within:border-[#1c69d4] transition-colors p-1">
+            <div className="relative flex items-end bg-gray-50 border border-gray-200 rounded-xl focus-within:border-[#1c69d4] transition-colors p-1">
               <textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask about land-use changes..."
-                className="w-full bg-transparent text-white px-3 py-3 outline-none resize-none max-h-32 text-sm"
+                className="w-full bg-transparent text-black px-3 py-3 outline-none resize-none max-h-32 text-sm"
                 rows={1}
               />
               <button

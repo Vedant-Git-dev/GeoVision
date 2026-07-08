@@ -94,7 +94,7 @@ export default function LandingPage({ onStart }) {
 
       // Apply transform directly to DOM node for max performance
       if (orbWrapperRef.current) {
-        orbWrapperRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+        orbWrapperRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`; // Removed CSS scale to fix GPU clipping
         orbWrapperRef.current.style.opacity = isExiting ? 0 : opacity;
       }
     });
@@ -129,7 +129,7 @@ export default function LandingPage({ onStart }) {
           top: '50%',
           marginLeft: '-700px',
           marginTop: '-700px',
-          transform: 'translate3d(0px, -150px, 0) scale(1)', // Initial state matches Hero start
+          transform: 'translate3d(0px, -150px, 0)', // Initial state matches Hero start
           transition: 'opacity 0.5s ease', // REMOVED transform transition to fix scroll judder/inconsistency
         }}
       >
@@ -140,7 +140,7 @@ export default function LandingPage({ onStart }) {
 
       {/* ═══ Main Scrollable Content ═══ */}
       <motion.div
-        className="relative min-h-screen text-[#ededed] overflow-x-hidden selection:bg-white/20 selection:text-white"
+        className="relative min-h-screen text-[#111111] overflow-x-hidden selection:bg-black/10 selection:text-black"
         animate={isExiting ? { opacity: 0, y: -40 } : { opacity: 1, y: 0 }}
         transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
         style={{ background: 'transparent' }}
@@ -148,45 +148,40 @@ export default function LandingPage({ onStart }) {
         <div className="film-grain" />
 
         {/* Micro-copy */}
-        <div className="fixed left-6 top-1/2 -translate-y-1/2 -rotate-90 text-[9px] text-white/15 tracking-[0.35em] font-medium z-40 hidden md:block uppercase select-none">
+        <div className="fixed left-6 top-1/2 -translate-y-1/2 -rotate-90 text-[9px] text-black/15 tracking-[0.35em] font-medium z-40 hidden md:block uppercase select-none">
           Sys.Init // V.2.0 // 37.7749°N 122.4194°W
         </div>
-        <div className="fixed right-6 bottom-8 text-[9px] text-white/15 tracking-[0.2em] font-medium z-40 hidden md:block uppercase select-none">
+        <div className="fixed right-6 bottom-8 text-[9px] text-black/15 tracking-[0.2em] font-medium z-40 hidden md:block uppercase select-none">
           GeoVision Engine // Active
         </div>
-
-        {/* ═══ Nav ═══ */}
-        <motion.nav
-          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-6 mix-blend-difference"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-[#ffffff] animate-pulse" />
-            <span className="text-white font-bold tracking-[0.25em] text-[11px] uppercase">GEOVISION</span>
+        <div className="fixed top-8 left-8 z-50 flex flex-col gap-1 text-[10px] uppercase tracking-[0.2em] font-medium text-black/60">
+          <span>Global Surveillance</span>
+          <span>Initiative / 2026</span>
+          <div className="flex items-center gap-2 mt-2 opacity-100">
+            <div className="w-2 h-2 rounded-full bg-black animate-pulse" />
+            <span className="text-black">Engine Online</span>
           </div>
-          <motion.button
-            onClick={handleStart}
-            className="px-6 py-2.5 border border-white/20 rounded-full text-[11px] font-semibold tracking-[0.15em] text-white hover:bg-white hover:text-black transition-all duration-500 flex items-center gap-2 uppercase"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Initialize <ArrowUpRight size={13} />
-          </motion.button>
-        </motion.nav>
+        </div>
+
+        {/* Top Right Action */}
+        <button 
+          onClick={handleStart}
+          className="fixed top-8 right-8 z-50 px-6 py-2.5 border border-black/20 rounded-full text-[11px] font-semibold tracking-[0.15em] text-black hover:bg-black hover:text-white transition-all duration-500 flex items-center gap-2 uppercase"
+        >
+          Enter Workspace <ArrowUpRight size={14} />
+        </button>
 
         {/* ═══ HERO (Text at bottom) ═══ */}
         <section className="relative h-screen flex flex-col justify-end pb-24 z-10">
           <motion.div
-            className="relative w-full px-8 md:px-24 flex flex-col md:flex-row items-end justify-between mix-blend-difference"
+            className="relative w-full px-8 md:px-24 flex flex-col md:flex-row items-end justify-between"
             initial="hidden"
             animate="visible"
             variants={staggerContainer}
           >
             <div className="max-w-4xl">
               <motion.h1
-                className="font-serif-italic text-6xl md:text-[5.5rem] lg:text-[7rem] font-medium leading-[1.0] tracking-[-0.03em] text-white mb-6"
+                className="font-serif-italic text-6xl md:text-[5.5rem] lg:text-[7rem] font-medium leading-[1.0] tracking-[-0.03em] text-black mb-6"
                 variants={fadeUp}
                 custom={0}
               >
@@ -197,7 +192,7 @@ export default function LandingPage({ onStart }) {
             
             <div className="max-w-sm text-right flex flex-col items-end pb-4">
               <motion.p
-                className="text-sm md:text-base font-light text-white/50 mb-8 leading-relaxed"
+                className="text-sm md:text-base font-light text-black/50 mb-8 leading-relaxed"
                 variants={fadeUp}
                 custom={1}
               >
@@ -209,7 +204,7 @@ export default function LandingPage({ onStart }) {
                   const el = document.getElementById('section-earth');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="inline-flex items-center justify-center w-12 h-12 border border-white/20 rounded-full text-white hover:bg-white hover:text-black transition-all duration-300"
+                className="inline-flex items-center justify-center w-12 h-12 border border-black/20 rounded-full text-black hover:bg-black hover:text-white transition-all duration-300"
                 variants={fadeUp}
                 custom={2}
               >
@@ -222,24 +217,24 @@ export default function LandingPage({ onStart }) {
         {/* ═══ FEATURE 1 ═══ */}
         <section id="section-earth" className="relative min-h-[130vh] flex items-center z-10">
           <motion.div
-            className="relative px-8 md:px-24 max-w-2xl mix-blend-difference"
+            className="relative mx-8 md:mx-24 px-10 py-12 max-w-2xl bg-white/60 backdrop-blur-md rounded-[32px] border border-black/5 shadow-2xl shadow-black/5"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-200px" }}
             variants={staggerContainer}
           >
-            <motion.div className="text-[11px] text-white/40 tracking-[0.3em] uppercase font-medium mb-6" variants={fadeUp}>
+            <motion.div className="text-[11px] text-black/40 tracking-[0.3em] uppercase font-medium mb-6" variants={fadeUp}>
               01 — Core Engine
             </motion.div>
             <motion.h2
-              className="font-serif text-5xl md:text-7xl font-normal leading-[1.05] tracking-[-0.03em] mb-8 text-white"
+              className="font-serif text-5xl md:text-7xl font-normal leading-[1.05] tracking-[-0.03em] mb-8 text-black"
               variants={fadeUp}
               custom={1}
             >
               Earth-Aware<br />Engine
             </motion.h2>
             <motion.p
-              className="text-lg md:text-xl text-white/60 font-light leading-relaxed"
+              className="text-lg md:text-xl text-black/60 font-light leading-relaxed"
               variants={fadeUp}
               custom={2}
             >
@@ -253,24 +248,24 @@ export default function LandingPage({ onStart }) {
         {/* ═══ FEATURE 2 ═══ */}
         <section className="relative min-h-[130vh] flex items-center justify-end z-10">
           <motion.div
-            className="relative px-8 md:px-24 max-w-2xl text-right mix-blend-difference"
+            className="relative mx-8 md:mx-24 px-10 py-12 max-w-2xl text-right bg-white/60 backdrop-blur-md rounded-[32px] border border-black/5 shadow-2xl shadow-black/5"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-200px" }}
             variants={staggerContainer}
           >
-            <motion.div className="text-[11px] text-white/40 tracking-[0.3em] uppercase font-medium mb-6" variants={fadeUp}>
+            <motion.div className="text-[11px] text-black/40 tracking-[0.3em] uppercase font-medium mb-6" variants={fadeUp}>
               02 — Personality
             </motion.div>
             <motion.h2
-              className="font-serif text-5xl md:text-7xl font-normal leading-[1.05] tracking-[-0.03em] mb-8 text-white"
+              className="font-serif text-5xl md:text-7xl font-normal leading-[1.05] tracking-[-0.03em] mb-8 text-black"
               variants={fadeUp}
               custom={1}
             >
               Spatial<br />Personality
             </motion.h2>
             <motion.p
-              className="text-lg md:text-xl text-white/60 font-light leading-relaxed"
+              className="text-lg md:text-xl text-black/60 font-light leading-relaxed"
               variants={fadeUp}
               custom={2}
             >
@@ -283,21 +278,21 @@ export default function LandingPage({ onStart }) {
         {/* ═══ STATEMENT ═══ */}
         <section className="relative min-h-[100vh] flex items-center justify-center z-10">
           <motion.div
-            className="relative text-center max-w-4xl mx-auto px-6 mix-blend-difference"
+            className="relative text-center max-w-4xl mx-auto px-10 py-16 bg-white/60 backdrop-blur-md rounded-[32px] border border-black/5 shadow-2xl shadow-black/5"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-200px" }}
             variants={staggerContainer}
           >
             <motion.h2
-              className="font-serif-italic text-5xl md:text-7xl lg:text-8xl font-medium leading-[1.05] tracking-[-0.03em] mb-8 text-white"
+              className="font-serif-italic text-5xl md:text-7xl lg:text-8xl font-medium leading-[1.05] tracking-[-0.03em] mb-8 text-black"
               variants={fadeUp}
             >
               We gave GeoVision a shape
               <br />to make its presence felt.
             </motion.h2>
             <motion.p
-              className="text-base md:text-lg text-white/60 font-light max-w-2xl mx-auto leading-relaxed"
+              className="text-base md:text-lg text-black/60 font-light max-w-2xl mx-auto leading-relaxed"
               variants={fadeUp}
               custom={1}
             >
@@ -308,142 +303,95 @@ export default function LandingPage({ onStart }) {
           </motion.div>
         </section>
 
-        {/* ═══ BENTO CARDS ═══ */}
-        <section className="relative py-40 px-8 md:px-24 z-20" style={{ background: '#030303' }}>
-          <div className="absolute top-0 left-0 right-0 h-60 bg-gradient-to-b from-transparent to-[#030303] pointer-events-none -mt-60" />
-
+        {/* ═══ The Output (Bento Grid) ═══ */}
+        <section className="relative z-10 py-32 px-6 md:px-12 max-w-7xl mx-auto">
           <motion.div
-            className="max-w-6xl mx-auto relative z-10"
+            className="grid grid-cols-1 md:grid-cols-3 gap-5"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
             variants={staggerContainer}
           >
-            {/* Top Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
-              <motion.div
-                className="bento-card bg-gradient-to-br from-[#8a4a1c] via-[#5a2d0e] to-[#1a0a00] text-white p-10 md:p-12 rounded-[28px] flex flex-col justify-between min-h-[400px]"
-                variants={scaleIn}
-                custom={0}
-              >
-                <div className="self-end">
-                  <Sparkles size={36} strokeWidth={1} className="text-white/70" />
-                </div>
-                <div>
-                  <h3 className="font-serif-italic text-3xl md:text-4xl font-normal leading-tight mb-3">
-                    Spatial Analysis
-                  </h3>
-                  <p className="text-base text-white/50 font-light">
-                    for researchers that<br />care how they map
+              <div className="col-span-1 md:col-span-1">
+                <div className="bento-card bg-white/60 backdrop-blur-md border border-black/5 shadow-2xl shadow-black/5 text-black p-10 md:p-12 rounded-[28px] flex flex-col justify-between min-h-[400px]">
+                  <div>
+                    <Sparkles size={24} className="text-[#cc5500] mb-6" />
+                    <h3 className="font-serif text-3xl mb-4 leading-tight">Pixel-Perfect<br />Precision</h3>
+                  </div>
+                  <p className="text-black/60 font-medium text-sm leading-relaxed max-w-[280px]">
+                    Down to 10-meter resolution, identifying subtle shifts in urban sprawl and deforestation.
                   </p>
                 </div>
-              </motion.div>
+              </div>
 
-              <motion.div className="flex items-center justify-center p-8 min-h-[400px]" variants={fadeUp} custom={1}>
-                <h3 className="font-serif text-3xl md:text-[2.2rem] font-normal leading-snug text-center text-white/80">
-                  Environmental Bots that
-                  <br />understand climate nuance
-                </h3>
-              </motion.div>
-
-              <motion.div
-                className="bento-card bg-[#0c0c0c] text-white p-10 md:p-12 rounded-[28px] flex flex-col items-center justify-center min-h-[400px] border border-white/[0.06]"
-                variants={scaleIn}
-                custom={2}
-              >
-                <div className="border border-white/15 rounded-[80px] px-8 py-5">
-                  <h3 className="font-serif-italic text-2xl md:text-[1.7rem] font-normal leading-tight text-center">
-                    AI Agents that flex
-                    <br />to each user's pace
+              {/* Card 2: AI Explanations */}
+              <div className="col-span-1 md:col-span-2">
+                <div className="bento-card bg-white/60 backdrop-blur-md border border-black/5 shadow-2xl shadow-black/5 text-black p-10 md:p-12 rounded-[28px] flex flex-col items-center justify-center min-h-[400px]">
+                  <h3 className="font-serif text-4xl md:text-5xl text-center mb-6 leading-tight max-w-lg">
+                    "AI that speaks<br />human."
                   </h3>
+                  <p className="text-black/60 text-center font-medium max-w-md">
+                    No more raw data dumps. Get instant, natural language explanations of what changed and why it matters.
+                  </p>
                 </div>
-              </motion.div>
-            </div>
+              </div>
 
-            {/* Bottom Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <motion.div
-                className="bento-card bg-[#e6e2db] text-[#0a0a0a] p-10 md:p-12 rounded-[28px] flex flex-col justify-end min-h-[380px]"
-                variants={scaleIn}
-                custom={3}
-              >
-                <div className="text-4xl mb-6">☺</div>
-                <h3 className="font-serif text-3xl font-normal tracking-tight leading-tight">
-                  Digital explorers
-                </h3>
-                <p className="text-lg text-[#0a0a0a]/50 font-light mt-2 leading-tight">
-                  that feel more like analysts<br />than dashboards
-                </p>
-              </motion.div>
+              {/* Card 3: Instant Reports */}
+              <div className="col-span-1 md:col-span-2">
+                <div className="bento-card bg-[#f4f4f4]/60 backdrop-blur-md border border-black/5 shadow-2xl shadow-black/5 text-[#111111] p-10 md:p-12 rounded-[28px] flex flex-col justify-end min-h-[380px]">
+                  <h3 className="font-serif text-4xl mb-4">Export Ready</h3>
+                  <p className="text-black/60 font-medium max-w-md">
+                    Instantly generate shareable HTML reports with interactive maps and statistical breakdowns.
+                  </p>
+                </div>
+              </div>
 
-              <div className="hidden md:block" />
-
-              <motion.div
-                className="bento-card overflow-hidden bg-gradient-to-br from-[#2a1200] to-[#0d0500] text-white p-10 md:p-12 rounded-[28px] flex flex-col justify-end min-h-[380px] border border-white/[0.04] relative"
-                variants={scaleIn}
-                custom={4}
-              >
-                <h3 className="font-serif text-3xl md:text-4xl font-normal tracking-tight leading-tight mb-3 relative z-10">
-                  Satellite Assistants
-                </h3>
-                <p className="text-lg font-light text-white/50 relative z-10">
-                  that talk like humans,<br />not scripts
-                </p>
-                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#cc5500]/60 to-transparent" />
-              </motion.div>
-            </div>
+              {/* Card 4: Global Scale */}
+              <div className="col-span-1 md:col-span-1">
+                <div className="bento-card overflow-hidden bg-white/60 backdrop-blur-md text-black p-10 md:p-12 rounded-[28px] flex flex-col justify-end min-h-[380px] border border-black/5 shadow-2xl shadow-black/5 relative">
+                  <div className="relative z-10">
+                    <h3 className="font-serif text-3xl mb-4">Anywhere.<br />Anytime.</h3>
+                    <p className="text-black/60 font-medium text-sm">
+                      Powered by Google Earth Engine's petabyte-scale archive.
+                    </p>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-orange-200/30 to-transparent" />
+                </div>
+              </div>
           </motion.div>
         </section>
 
         {/* ═══ BOTTOM CTA ═══ */}
-        <section className="relative py-40 px-8 md:px-24 z-20 warm-glow-bg" style={{ background: '#030303' }}>
-          <motion.div
-            className="max-w-5xl mx-auto"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={staggerContainer}
-          >
-            <motion.h2
-              className="font-serif-italic text-5xl md:text-7xl font-normal leading-[1.05] tracking-[-0.02em] mb-10 text-white"
-              variants={fadeUp}
-            >
-              GeoVision's intelligence lives in an artificial world but
-              its voice comes to life here — in the chat.
-            </motion.h2>
-            <motion.p
-              className="text-sm md:text-base text-white/40 font-light mb-14 max-w-xl leading-relaxed"
-              variants={fadeUp}
-              custom={1}
-            >
-              The interface is intentionally quiet. No distraction. No clutter.
-              Just conversation that breathes. It's not about looking smart —
-              it's about feeling present.
-            </motion.p>
-            <motion.button
+        <section className="relative py-40 px-8 md:px-24 z-20">
+          <div className="text-center">
+            <h2 className="font-serif text-5xl md:text-7xl mb-8 tracking-tight text-black">Ready to explore?</h2>
+            <button 
               onClick={handleStart}
-              className="inline-flex items-center gap-3 px-10 py-4 bg-white text-black rounded-full font-bold tracking-[0.15em] text-[11px] uppercase hover:scale-105 transition-all duration-500"
-              variants={fadeUp}
-              custom={2}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              className="inline-flex items-center gap-3 px-10 py-4 bg-black text-white rounded-full font-bold tracking-[0.15em] text-[11px] uppercase hover:scale-105 hover:bg-gray-900 transition-all duration-500 shadow-xl"
             >
-              Launch System <ArrowUpRight size={14} />
-            </motion.button>
-          </motion.div>
+              Enter the Workspace <ArrowUpRight size={16} />
+            </button>
+          </div>
+
+          <div className="mt-32 flex flex-col md:flex-row items-center justify-between text-[10px] uppercase tracking-[0.2em] font-medium text-black/40 gap-4">
+            <div className="flex items-center gap-2">
+              <Copyright size={12} /> 2026 GeoVision AI
+            </div>
+            <div>Designed for the future</div>
+          </div>
         </section>
 
         {/* ═══ Footer ═══ */}
-        <footer className="relative z-20 border-t border-white/[0.06] py-10 px-8 md:px-24" style={{ background: '#030303' }}>
+        <footer className="relative z-20 border-t border-black/5 py-10 px-8 md:px-24">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-2 text-white/25 text-[10px] font-medium tracking-[0.15em] uppercase">
+            <div className="flex items-center gap-2 text-black/25 text-[10px] font-medium tracking-[0.15em] uppercase">
               <Copyright size={12} /> 2026 GeoVision Engine
             </div>
-            <div className="flex gap-10 text-white/25 text-[10px] font-medium tracking-[0.15em] uppercase">
-              <a href="#" className="hover:text-white/60 transition-colors duration-300">Privacy</a>
-              <a href="#" className="hover:text-white/60 transition-colors duration-300">Terms</a>
-              <a href="#" className="hover:text-white/60 transition-colors duration-300">Architecture</a>
-              <a href="#" className="hover:text-white/60 transition-colors duration-300">GitHub</a>
+            <div className="flex gap-10 text-black/40 text-[10px] font-medium tracking-[0.15em] uppercase">
+              <a href="#" className="hover:text-black transition-colors duration-300">Privacy</a>
+              <a href="#" className="hover:text-black transition-colors duration-300">Terms</a>
+              <a href="#" className="hover:text-black transition-colors duration-300">Architecture</a>
+              <a href="#" className="hover:text-black transition-colors duration-300">GitHub</a>
             </div>
           </div>
         </footer>
