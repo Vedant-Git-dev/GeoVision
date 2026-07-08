@@ -6,15 +6,13 @@ import logging
 from collections.abc import Callable
 from datetime import datetime, timedelta
 
-import ee
-
 from .types import DateRange
 from .ee_init import init_ee
 from .geocode import resolve_location
 from .boundary import get_district_aoi, get_city_aoi
-from .settlements import get_settlements
 from .composite import build_composite
 from .dynamic_world import build_dw_composite
+from .settlements import get_settlements
 from .changes import detect_changes, get_change_vis_params
 from .signature import dw_to_signature
 from .stats import compute_land_cover_stats
