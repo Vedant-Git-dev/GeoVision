@@ -14,6 +14,19 @@
     const chipsRow = document.getElementById('chips-row');
     const welcomeHero = document.getElementById('welcome-hero');
 
+    // ─── Landing Page Elements ───
+    const landingPage = document.getElementById('landing-page');
+    const btnStartExploring = document.getElementById('btn-start-exploring');
+
+    if (landingPage && btnStartExploring) {
+        btnStartExploring.addEventListener('click', () => {
+            landingPage.classList.add('fade-out');
+            setTimeout(() => {
+                input.focus();
+            }, 800); // Wait for the transition to finish before focusing
+        });
+    }
+
     // ─── State ───
     let mapCounter = 0;
     let isWaiting = false;

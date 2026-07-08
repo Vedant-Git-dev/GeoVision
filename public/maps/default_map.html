@@ -415,6 +415,14 @@
                 console.error('Parse error:', e);
             }
         }
+
+        // Support cross-origin iframe embedding via postMessage
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'MAP_CONFIG') {
+                console.log('Received map config via postMessage');
+                showMap(event.data.config);
+            }
+        });
     </script>
 </body>
 </html>
