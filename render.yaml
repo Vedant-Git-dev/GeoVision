@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: geovision-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: EE_PROJECT_ID
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
