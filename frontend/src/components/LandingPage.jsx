@@ -46,7 +46,10 @@ export default function LandingPage({ onStart }) {
     });
 
     lenis.on('scroll', ({ progress }) => {
-      const p = progress; // 0 to 1
+      if (isExiting) return;
+      
+      // Clamp p to exactly 0 to 1 to prevent overscroll math glitches
+      const p = Math.max(0, Math.min(1, progress));
       scrollProgressRef.current = p; // Pass this to the shader
 
       let x = 0, y = 0, scale = 1, opacity = 1;

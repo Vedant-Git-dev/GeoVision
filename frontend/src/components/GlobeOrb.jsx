@@ -107,12 +107,12 @@ function Blob({ scrollProgress }) {
     () => ({
       u_time: { value: 0 },
       u_intensity: { value: 0.1 }, // Starts dormant
-      u_color: { value: new Color(0x000000) }, // Starts dark
+      u_color: { value: new Color(0x222222) }, // Starts dark
     }),
     []
   );
 
-  const activeColor = useMemo(() => new Color(0xff5500), []); // Orange/hot color when active
+  const activeColor = useMemo(() => new Color(0xffffff), []); // Orange/hot color when active
 
   useFrame((state) => {
     const { clock } = state;
@@ -126,7 +126,7 @@ function Blob({ scrollProgress }) {
       
       // Interpolate color from warm dark orange to hot orange
       material.uniforms.u_color.value.lerpColors(
-        new Color(0x661100), // Visible, deep red/orange instead of near black
+        new Color(0x222222), // Visible, deep red/orange instead of near black
         activeColor, 
         Math.min(1, p * 4) 
       );

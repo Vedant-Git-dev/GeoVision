@@ -120,9 +120,22 @@ export default function ChatUI() {
       }
 
       if (finalResult && finalResult.success) {
+        let chatContent = finalResult.explanation || 'Map generated successfully.';
+        
+        // Append stats table if present
+        if (finalResult.config && finalResult.config.land_cover_stats && finalResult.config.land_cover_stats.classes) {
+          const stats = finalResult.config.land_cover_stats.classes;
+          let statsMarkdown = '\n\n### Land Cover Changes\n\n| Class | Before | After | Change |\n|---|---|---|---|\n';
+          stats.forEach(c => {
+             const sign = c.delta > 0 ? '+' : '';
+             statsMarkdown += `| **${c.name}** | ${c.before}% | ${c.after}% | ${sign}${c.delta}% |\n`;
+          });
+          chatContent = statsMarkdown + '\n' + chatContent;
+        }
+
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: finalResult.explanation || 'Map generated successfully.',
+          content: chatContent,
         }]);
         setCurrentMapConfig(finalResult.config);
         setMapUrl(`${API_URL}/maps/default_map.html`);
