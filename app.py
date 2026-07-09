@@ -3,11 +3,14 @@
 import json
 import logging
 import os
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+
 import queue
 import threading
 
 import ee
 from flask import Flask, request, jsonify, send_from_directory, Response
+from flask_cors import CORS
 
 from geovision import run_pipeline
 from geovision.config import EE_PROJECT_ID
@@ -17,6 +20,7 @@ from geovision import chat
 log = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder='public', static_url_path='')
+CORS(app)
 
 
 @app.after_request
@@ -25,11 +29,6 @@ def add_header(response):
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     return response
-
-
-@app.route('/')
-def index():
-    return send_from_directory('public', 'chat.html')
 
 
 @app.route('/check-ee')
@@ -60,6 +59,7 @@ def generate():
 
         result = {
             "success": True,
+            "map_url": "maps/default_map.html",
             "config": config,
         }
 
@@ -109,6 +109,7 @@ def generate_stream():
 
             result = {
                 "success": True,
+                "map_url": "maps/default_map.html",
                 "config": config,
             }
 
@@ -225,5 +226,7 @@ def api_chat_stream():
 if __name__ == '__main__':
     print("=========================================")
     print(" GeoVision - Starting on http://127.0.0.1:5000")
+    print("  AI Chat:    http://127.0.0.1:5000/")
+    print("  Classic UI: http://127.0.0.1:5000/classic")
     print("=========================================")
     app.run(debug=True, port=5000)

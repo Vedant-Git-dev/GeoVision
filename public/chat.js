@@ -5,30 +5,6 @@
 (function () {
     'use strict';
 
-    // ─── Theme Toggle ───
-    const themeToggle = document.getElementById('theme-toggle');
-    const savedTheme = localStorage.getItem('geovision-theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-
-    function setThemeIcon(theme) {
-        if (!themeToggle) return;
-        themeToggle.innerHTML = theme === 'light'
-            ? '<i data-lucide="moon"></i>'
-            : '<i data-lucide="sun"></i>';
-        if (window.lucide) lucide.createIcons();
-    }
-    setThemeIcon(savedTheme);
-
-    if (themeToggle) {
-        themeToggle.addEventListener('click', function () {
-            const current = document.documentElement.getAttribute('data-theme');
-            const next = current === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', next);
-            localStorage.setItem('geovision-theme', next);
-            setThemeIcon(next);
-        });
-    }
-
     // ─── DOM References ───
     const form = document.getElementById('chat-form');
     const input = document.getElementById('chat-input');
@@ -37,6 +13,19 @@
     const messagesInner = document.getElementById('messages-inner');
     const chipsRow = document.getElementById('chips-row');
     const welcomeHero = document.getElementById('welcome-hero');
+
+    // ─── Landing Page Elements ───
+    const landingPage = document.getElementById('landing-page');
+    const btnStartExploring = document.getElementById('btn-start-exploring');
+
+    if (landingPage && btnStartExploring) {
+        btnStartExploring.addEventListener('click', () => {
+            landingPage.classList.add('fade-out');
+            setTimeout(() => {
+                input.focus();
+            }, 800); // Wait for the transition to finish before focusing
+        });
+    }
 
     // ─── State ───
     let mapCounter = 0;
@@ -413,23 +402,21 @@
         const beforeMap = L.map(beforeMapId, mapOpts);
         const afterMap = L.map(afterMapId, mapOpts);
 
-        // ── Satellite basemap on both ──
-        const esriUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-        L.tileLayer(esriUrl, { maxZoom: 18 }).addTo(beforeMap);
-        L.tileLayer(esriUrl, { maxZoom: 18 }).addTo(afterMap);
+        // Dark basemap on both
+        const basemapUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+        const basemapOpts = { subdomains: 'abcd', maxZoom: 19 };
+        L.tileLayer(basemapUrl, basemapOpts).addTo(beforeMap);
+        L.tileLayer(basemapUrl, basemapOpts).addTo(afterMap);
 
         // ── Before Map Layers ──
         if (config.before_tiles) {
             L.tileLayer(config.before_tiles, { maxZoom: 19, opacity: 0.9 }).addTo(beforeMap);
         }
         const beforeOverlays = {};
-        if (config.change_mask_tiles) {
-            const changeMaskBefore = L.tileLayer(config.change_mask_tiles, { maxZoom: 19, opacity: 0.7 });
-            beforeOverlays['Change Mask'] = changeMaskBefore;
-        }
         if (config.land_cover_before_tiles) {
             const lcBefore = L.tileLayer(config.land_cover_before_tiles, { maxZoom: 19, opacity: 0.8 });
             beforeOverlays['Land Cover'] = lcBefore;
+            lcBefore.addTo(beforeMap);
         }
         if (Object.keys(beforeOverlays).length > 0) {
             L.control.layers(null, beforeOverlays, { collapsed: true, position: 'topright' }).addTo(beforeMap);
@@ -441,12 +428,14 @@
         }
         const afterOverlays = {};
         if (config.change_mask_tiles) {
-            const changeMaskAfter = L.tileLayer(config.change_mask_tiles, { maxZoom: 19, opacity: 0.7 });
-            afterOverlays['Change Mask'] = changeMaskAfter;
+            const changeMask = L.tileLayer(config.change_mask_tiles, { maxZoom: 19, opacity: 0.7 });
+            afterOverlays['Change Mask'] = changeMask;
+            changeMask.addTo(afterMap);
         }
         if (config.land_cover_after_tiles) {
             const lcAfter = L.tileLayer(config.land_cover_after_tiles, { maxZoom: 19, opacity: 0.8 });
             afterOverlays['Land Cover'] = lcAfter;
+            lcAfter.addTo(afterMap);
         }
         if (Object.keys(afterOverlays).length > 0) {
             L.control.layers(null, afterOverlays, { collapsed: true, position: 'topright' }).addTo(afterMap);
@@ -592,7 +581,13 @@
 
     function buildExplanation(text) {
         const section = createElement('div', 'explanation-section');
-        section.innerHTML = marked.parse(text);
+        // Split on double-newline for paragraphs, otherwise single block
+        const paragraphs = text.split(/\n\n+/);
+        paragraphs.forEach(function (para) {
+            const p = document.createElement('p');
+            p.textContent = para.trim();
+            section.appendChild(p);
+        });
         return section;
     }
 
