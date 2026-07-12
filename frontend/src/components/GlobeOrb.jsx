@@ -73,6 +73,7 @@ void main() {
 const fragmentShader = `
 uniform float u_intensity;
 uniform float u_time;
+uniform float u_opacity;
 uniform vec3 u_color;
 
 varying vec2 vUv;
@@ -81,7 +82,7 @@ varying float vDisplacement;
 void main() {
     float distort = 2.0 * vDisplacement * u_intensity * sin(vUv.y * 10.0 + u_time);
     vec3 color = mix(u_color, vec3(1.0, 1.0, 1.0), distort);
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = vec4(color, u_opacity);
 }
 `;
 
@@ -92,6 +93,7 @@ function Blob({ scrollProgress }) {
     () => ({
       u_time: { value: 0 },
       u_intensity: { value: 0.1 },
+      u_opacity: { value: 1.0 },
       u_color: { value: new Color(0x999999) }, // Starts as light grey wireframe
     }),
     []
@@ -109,6 +111,7 @@ function Blob({ scrollProgress }) {
       // Tie intensity to scroll progress
       const p = scrollProgress.current || 0;
       const targetIntensity = p > 0.05 ? 0.7 : 0.4; // Stronger distortion
+      const targetOpacity = p >= 0.8 ? Math.max(0.08, 1 - ((p - 0.8) / 0.2) * 0.92) : 1.0;
       
       // Interpolate color from light grey to jet black
       material.uniforms.u_color.value.lerpColors(
@@ -120,6 +123,12 @@ function Blob({ scrollProgress }) {
       material.uniforms.u_intensity.value = MathUtils.lerp(
         material.uniforms.u_intensity.value,
         targetIntensity,
+        0.05
+      );
+
+      material.uniforms.u_opacity.value = MathUtils.lerp(
+        material.uniforms.u_opacity.value,
+        targetOpacity,
         0.05
       );
 

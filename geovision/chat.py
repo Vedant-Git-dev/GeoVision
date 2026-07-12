@@ -176,6 +176,7 @@ def process_chat_message(user_message: str, history: list = None, on_progress=No
         after_date=after_date,
         config=config,
         question=question,
+        history=history,
     )
 
     # Step 4 — Package response
