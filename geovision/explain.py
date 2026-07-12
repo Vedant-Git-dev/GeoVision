@@ -45,6 +45,7 @@ def generate_explanation(
     after_date: str,
     config: dict,
     question: str | None = None,
+    history: list = None,
 ) -> str:
     """
     Generate a natural language explanation of the change detection results.
@@ -109,18 +110,26 @@ Notable settlements in the area: {settlements_text}
 
 Please provide a clear, concise, and informative summary of what changed in this area during this period. Highlight the most significant transitions, discuss potential causes (e.g., urban expansion, deforestation, agricultural changes, water body changes), and mention any notable environmental or societal implications. Use the data to support your explanations. Give Markdown formatting where appropriate."""
 
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful and knowledgeable satellite imagery analyst.",
+        }
+    ]
+
+    # Inject conversation history for context
+    if history:
+        for msg in history:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+
+    messages.append({"role": "user", "content": user_prompt})
+
     try:
         response = client.chat.completions.create(
             model=GROQ_MODEL,
             max_tokens=1000,
             temperature=0.3,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful and knowledgeable satellite imagery analyst.",
-                },
-                {"role": "user", "content": user_prompt},
-            ],
+            messages=messages,
         )
         return response.choices[0].message.content.strip()
     except Exception as e:

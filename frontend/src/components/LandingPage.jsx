@@ -133,34 +133,30 @@ export default function LandingPage({ onStart }) {
           transition: 'opacity 0.5s ease', // REMOVED transform transition to fix scroll judder/inconsistency
         }}
       >
-        <Suspense fallback={null}>
+        <Suspense fallback={<div className="w-full h-full" />}>
           <GlobeOrb scrollProgress={scrollProgressRef} />
         </Suspense>
       </div>
 
       {/* ═══ Main Scrollable Content ═══ */}
       <motion.div
-        className="relative min-h-screen text-[#111111] overflow-x-hidden selection:bg-black/10 selection:text-black"
+        className="relative w-full bg-white text-[#111111] overflow-x-hidden selection:bg-black/10 selection:text-black"
         animate={isExiting ? { opacity: 0, y: -40 } : { opacity: 1, y: 0 }}
         transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-        style={{ background: 'transparent' }}
+        style={{ background: '#ffffff', minHeight: '100vh' }}
       >
         <div className="film-grain" />
 
         {/* Micro-copy */}
         <div className="fixed left-6 top-1/2 -translate-y-1/2 -rotate-90 text-[9px] text-black/15 tracking-[0.35em] font-medium z-40 hidden md:block uppercase select-none">
-          Sys.Init // V.2.0 // 37.7749°N 122.4194°W
+          Earth Engine // Processing // 37.7749°N 122.4194°W
         </div>
         <div className="fixed right-6 bottom-8 text-[9px] text-black/15 tracking-[0.2em] font-medium z-40 hidden md:block uppercase select-none">
-          GeoVision Engine // Active
+          Sentinel 2 // Processing Active
         </div>
         <div className="fixed top-8 left-8 z-50 flex flex-col gap-1 text-[10px] uppercase tracking-[0.2em] font-medium text-black/60">
-          <span>Global Surveillance</span>
-          <span>Initiative / 2026</span>
-          <div className="flex items-center gap-2 mt-2 opacity-100">
-            <div className="w-2 h-2 rounded-full bg-black animate-pulse" />
-            <span className="text-black">Engine Online</span>
-          </div>
+          <span>Satellite Change Detection</span>
+          <span>Powered by Google Earth Engine</span>
         </div>
 
         {/* Top Right Action */}
@@ -168,7 +164,7 @@ export default function LandingPage({ onStart }) {
           onClick={handleStart}
           className="fixed top-8 right-8 z-50 px-6 py-2.5 border border-black/20 rounded-full text-[11px] font-semibold tracking-[0.15em] text-black hover:bg-black hover:text-white transition-all duration-500 flex items-center gap-2 uppercase"
         >
-          Enter Workspace <ArrowUpRight size={14} />
+          Analyze Now <ArrowUpRight size={14} />
         </button>
 
         {/* ═══ HERO (Text at bottom) ═══ */}
@@ -185,8 +181,8 @@ export default function LandingPage({ onStart }) {
                 variants={fadeUp}
                 custom={0}
               >
-                GeoVision doesn't just reply
-                <br />— it resonates.
+                See the earth
+                <br />— as it changes.
               </motion.h1>
             </div>
             
@@ -196,8 +192,7 @@ export default function LandingPage({ onStart }) {
                 variants={fadeUp}
                 custom={1}
               >
-                Most tools are built to output maps. GeoVision is built to relate.
-                Through adaptive spatial recognition, it transforms geography into something profound.
+                Satellite intelligence that detects land cover transformation with 10-meter precision. From urban sprawl to deforestation. From environmental damage to recovery.
               </motion.p>
               <motion.button
                 onClick={() => {
@@ -224,23 +219,21 @@ export default function LandingPage({ onStart }) {
             variants={staggerContainer}
           >
             <motion.div className="text-[11px] text-black/40 tracking-[0.3em] uppercase font-medium mb-6" variants={fadeUp}>
-              01 — Core Engine
+              01 — Detection Engine
             </motion.div>
             <motion.h2
               className="font-serif text-5xl md:text-7xl font-normal leading-[1.05] tracking-[-0.03em] mb-8 text-black"
               variants={fadeUp}
               custom={1}
             >
-              Earth-Aware<br />Engine
+              Sentinel 2<br />Precision
             </motion.h2>
             <motion.p
               className="text-lg md:text-xl text-black/60 font-light leading-relaxed"
               variants={fadeUp}
               custom={2}
             >
-              GeoVision hears more than words. It reads terrain, tempo, and
-              geography — offering contextually aligned responses that feel
-              naturally intelligent.
+              Harness multispectral satellite data processed through Google Earth Engine to detect environmental shifts at 10-meter resolution. Forest loss, urban sprawl, agricultural change—captured in every pixel.
             </motion.p>
           </motion.div>
         </section>
@@ -254,23 +247,22 @@ export default function LandingPage({ onStart }) {
             viewport={{ once: true, margin: "-200px" }}
             variants={staggerContainer}
           >
-            <motion.div className="text-[11px] text-black/40 tracking-[0.3em] uppercase font-medium mb-6" variants={fadeUp}>
-              02 — Personality
+            <motion.div className="text-[11px] text-black/40 tracking-[0.3em] uppercase font-medium mb-6 flex justify-end" variants={fadeUp}>
+              02 — Classification
             </motion.div>
             <motion.h2
               className="font-serif text-5xl md:text-7xl font-normal leading-[1.05] tracking-[-0.03em] mb-8 text-black"
               variants={fadeUp}
               custom={1}
             >
-              Spatial<br />Personality
+              Dynamic World<br />Classification
             </motion.h2>
             <motion.p
-              className="text-lg md:text-xl text-black/60 font-light leading-relaxed"
+              className="text-lg md:text-xl text-black/60 font-light leading-relaxed text-right"
               variants={fadeUp}
               custom={2}
             >
-              You define who GeoVision is — analytical and precise, bold and expansive,
-              or somewhere in between. Style, voice, and depth are fluid.
+              Classify every pixel into 9 land cover categories using probability-based analysis. Understand not just what changed, but the ecological and societal implications of that transformation.
             </motion.p>
           </motion.div>
         </section>
@@ -288,17 +280,15 @@ export default function LandingPage({ onStart }) {
               className="font-serif-italic text-5xl md:text-7xl lg:text-8xl font-medium leading-[1.05] tracking-[-0.03em] mb-8 text-black"
               variants={fadeUp}
             >
-              We gave GeoVision a shape
-              <br />to make its presence felt.
+              Data speaks louder
+              <br />— when spoken clearly.
             </motion.h2>
             <motion.p
               className="text-base md:text-lg text-black/60 font-light max-w-2xl mx-auto leading-relaxed"
               variants={fadeUp}
               custom={1}
             >
-              Intelligence should be more than invisible lines of code. With GeoVision,
-              the experience feels physical. Its organic design mirrors its core:
-              adaptable, intuitive, and always evolving.
+              Raw satellite data is overwhelming. GeoVision transforms petabytes of imagery into human-readable insights powered by advanced AI, making environmental change accessible to everyone.
             </motion.p>
           </motion.div>
         </section>
@@ -316,10 +306,10 @@ export default function LandingPage({ onStart }) {
                 <div className="bento-card bg-white/60 backdrop-blur-md border border-black/5 shadow-2xl shadow-black/5 text-black p-10 md:p-12 rounded-[28px] flex flex-col justify-between min-h-[400px]">
                   <div>
                     <Sparkles size={24} className="text-[#cc5500] mb-6" />
-                    <h3 className="font-serif text-3xl mb-4 leading-tight">Pixel-Perfect<br />Precision</h3>
+                    <h3 className="font-serif text-3xl mb-4 leading-tight">10-Meter<br />Resolution</h3>
                   </div>
                   <p className="text-black/60 font-medium text-sm leading-relaxed max-w-[280px]">
-                    Down to 10-meter resolution, identifying subtle shifts in urban sprawl and deforestation.
+                    Sentinel 2 multispectral data reveals environmental shifts with unprecedented clarity and precision.
                   </p>
                 </div>
               </div>
@@ -328,10 +318,10 @@ export default function LandingPage({ onStart }) {
               <div className="col-span-1 md:col-span-2">
                 <div className="bento-card bg-white/60 backdrop-blur-md border border-black/5 shadow-2xl shadow-black/5 text-black p-10 md:p-12 rounded-[28px] flex flex-col items-center justify-center min-h-[400px]">
                   <h3 className="font-serif text-4xl md:text-5xl text-center mb-6 leading-tight max-w-lg">
-                    "AI that speaks<br />human."
+                    "AI that explains<br />why it matters."
                   </h3>
                   <p className="text-black/60 text-center font-medium max-w-md">
-                    No more raw data dumps. Get instant, natural language explanations of what changed and why it matters.
+                    Powered by Groq's LLM API, GeoVision translates environmental data into clear, actionable natural language insights about what's changing and why.
                   </p>
                 </div>
               </div>
@@ -339,9 +329,9 @@ export default function LandingPage({ onStart }) {
               {/* Card 3: Instant Reports */}
               <div className="col-span-1 md:col-span-2">
                 <div className="bento-card bg-[#f4f4f4]/60 backdrop-blur-md border border-black/5 shadow-2xl shadow-black/5 text-[#111111] p-10 md:p-12 rounded-[28px] flex flex-col justify-end min-h-[380px]">
-                  <h3 className="font-serif text-4xl mb-4">Export Ready</h3>
+                  <h3 className="font-serif text-4xl mb-4">Interactive Reports</h3>
                   <p className="text-black/60 font-medium max-w-md">
-                    Instantly generate shareable HTML reports with interactive maps and statistical breakdowns.
+                    Generate shareable HTML reports with before/after composites, change detection maps, land cover statistics, and AI explanations.
                   </p>
                 </div>
               </div>
@@ -350,12 +340,12 @@ export default function LandingPage({ onStart }) {
               <div className="col-span-1 md:col-span-1">
                 <div className="bento-card overflow-hidden bg-white/60 backdrop-blur-md text-black p-10 md:p-12 rounded-[28px] flex flex-col justify-end min-h-[380px] border border-black/5 shadow-2xl shadow-black/5 relative">
                   <div className="relative z-10">
-                    <h3 className="font-serif text-3xl mb-4">Anywhere.<br />Anytime.</h3>
+                    <h3 className="font-serif text-3xl mb-4">Any Place.<br />Any Date.</h3>
                     <p className="text-black/60 font-medium text-sm">
-                      Powered by Google Earth Engine's petabyte-scale archive.
+                      30 years of Sentinel 2 data covering the entire globe.
                     </p>
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-orange-200/30 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-blue-200/30 to-transparent" />
                 </div>
               </div>
           </motion.div>
@@ -364,20 +354,20 @@ export default function LandingPage({ onStart }) {
         {/* ═══ BOTTOM CTA ═══ */}
         <section className="relative py-40 px-8 md:px-24 z-20">
           <div className="text-center">
-            <h2 className="font-serif text-5xl md:text-7xl mb-8 tracking-tight text-black">Ready to explore?</h2>
+            <h2 className="font-serif text-5xl md:text-7xl mb-8 tracking-tight text-black">Understand environmental change.</h2>
             <button 
               onClick={handleStart}
               className="inline-flex items-center gap-3 px-10 py-4 bg-black text-white rounded-full font-bold tracking-[0.15em] text-[11px] uppercase hover:scale-105 hover:bg-gray-900 transition-all duration-500 shadow-xl"
             >
-              Enter the Workspace <ArrowUpRight size={16} />
+              Start Analysis <ArrowUpRight size={16} />
             </button>
           </div>
 
           <div className="mt-32 flex flex-col md:flex-row items-center justify-between text-[10px] uppercase tracking-[0.2em] font-medium text-black/40 gap-4">
             <div className="flex items-center gap-2">
-              <Copyright size={12} /> 2026 GeoVision AI
+              <Copyright size={12} /> 2026 GeoVision
             </div>
-            <div>Designed for the future</div>
+            <div>Satellite Intelligence Evolved</div>
           </div>
         </section>
 
@@ -385,7 +375,7 @@ export default function LandingPage({ onStart }) {
         <footer className="relative z-20 border-t border-black/5 py-10 px-8 md:px-24">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2 text-black/25 text-[10px] font-medium tracking-[0.15em] uppercase">
-              <Copyright size={12} /> 2026 GeoVision Engine
+              <Copyright size={12} /> 2026 GeoVision
             </div>
             <div className="flex gap-10 text-black/40 text-[10px] font-medium tracking-[0.15em] uppercase">
               <a href="#" className="hover:text-black transition-colors duration-300">Privacy</a>
