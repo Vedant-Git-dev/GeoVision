@@ -28,13 +28,12 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 # ---------------------------------------------------------------------------
 
 _PARSE_SYSTEM_PROMPT = """\
-You are an intelligent AI assistant for GeoVision, a satellite change-detection system.
+You are an intelligent AI routing assistant for GeoVision, a satellite change-detection system.
 Your job is to understand the user's message and determine whether they want to run a satellite analysis, or if they are just chatting/asking a question.
 
 Always respond with valid JSON with the following schema:
 {
   "intent": "chat" | "analyze",
-  "reply": "Your conversational response to the user. If intent is 'chat', this is what the user sees. If intent is 'analyze', leave this null.",
   "location": "The full place name (e.g. 'Kharadi, Pune, India') or null",
   "city": "The specific city/town/sub-area if the user mentioned one (e.g. 'Kharadi, Pune'). null if only a district/region is given.",
   "before_date": "YYYY-MM-DD or null",
@@ -43,7 +42,7 @@ Always respond with valid JSON with the following schema:
 }
 
 Rules:
-  - If the user says hello, asks a general question, or is missing required parameters (location, before_date, after_date) to run an analysis, set intent to "chat" and provide a helpful `reply` asking for the missing info or chatting back.
+  - If the user says hello, asks a general question, or is missing required parameters (location, before_date, after_date) to run an analysis, set intent to "chat".
   - If the user provides a location and a time range, set intent to "analyze".
   - If a location or date is missing in the current message but was established in the conversation history, you MUST reuse those established values and proceed with "analyze".
   - If the user confirms a parameter you previously asked about (e.g., "yes", "yepp", "correct"), set intent to "analyze" using the established location and dates.
@@ -112,6 +111,46 @@ def _validate_date(date_str: str | None) -> str | None:
         return None
 
 
+def _generate_chat_reply(message: str, history: list, parsed: dict) -> str:
+    """Use a dedicated conversational LLM call to handle back-and-forth chat."""
+    if not client:
+        return "I need a location and a time range (e.g., 'Pune between 2022 and 2024') to run the satellite analysis."
+
+    system_prompt = (
+        "You are GeoVision AI, a helpful and highly intelligent satellite analysis assistant. "
+        "Your goal is to help the user run a satellite change-detection analysis using Google Earth Engine. "
+        "To run an analysis, you MUST collect two things from the user: 1) A location, and 2) A time range (before and after dates). "
+        "If the user is missing any of these parameters, politely and conversationally ask for them. "
+        "If they are just chatting or asking general questions, chat back naturally using your vast knowledge. "
+        "Keep your responses concise, friendly, and formatted nicely using markdown. "
+    )
+
+    # If the parser found some parameters but not all, inform the conversational LLM so it knows what's missing
+    missing = []
+    if not parsed.get("location"): missing.append("location")
+    if not parsed.get("before_date") or not parsed.get("after_date"): missing.append("time range")
+    
+    if missing:
+        system_prompt += f"\n\nNote: The user currently wants to analyze something, but is missing: {', '.join(missing)}. Ask for them naturally."
+
+    messages = [{"role": "system", "content": system_prompt}]
+    for msg in history:
+        messages.append({"role": msg["role"], "content": msg["content"]})
+    messages.append({"role": "user", "content": message})
+
+    try:
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            temperature=0.7,
+            max_tokens=500,
+            messages=messages,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        log.error("Error generating chat reply: %s", e)
+        return "I'm having trouble connecting right now, but I need a location and a time range to run an analysis."
+
+
 # ---------------------------------------------------------------------------
 # Main orchestrator
 # ---------------------------------------------------------------------------
@@ -138,11 +177,9 @@ def process_chat_message(user_message: str, history: list = None, on_progress=No
     before_date = _validate_date(parsed.get("before_date"))
     after_date = _validate_date(parsed.get("after_date"))
 
-    # If conversational or missing parameters, just chat back
+    # If conversational or missing parameters, just chat back using the dedicated chat LLM
     if intent == "chat" or not location or not before_date or not after_date:
-        reply = parsed.get("reply")
-        if not reply:
-            reply = "I need a location and a time range (e.g., 'Pune between 2022 and 2024') to run the satellite analysis. What would you like to explore?"
+        reply = _generate_chat_reply(user_message, history or [], parsed)
         return {
             "success": True,
             "explanation": reply,
