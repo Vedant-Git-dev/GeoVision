@@ -52,7 +52,7 @@ Rules:
   - For city, include the parent district for disambiguation: "Kharadi, Pune, India" not just "Kharadi".
 """
 
-_PARSE_USER_TEMPLATE = 'Extract parameters from this message: "{message}"'
+_PARSE_USER_TEMPLATE = 'Latest user message: "{message}"\n\nTask: Extract the current cumulative parameters. You MUST carry over any established location or dates from the conversation history if they are missing in this latest message.'
 
 
 def _parse_intent(message: str, history: list = None) -> Dict[str, Any]:

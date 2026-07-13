@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Satellite, LayoutGrid, Globe, CornerDownLeft, Building2, Trees, RadioTower, Waves } from 'lucide-react';
+import { Globe, ArrowElbowDownLeft, CaretLeft } from '@phosphor-icons/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -163,11 +163,16 @@ export default function ChatUI() {
     <div className="flex flex-col h-screen bg-[#fafafa] text-gray-900">
       {/* Navbar */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-black/5 bg-white/50 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <Satellite className="text-black" size={24} />
-          <span className="font-bold text-xl text-black tracking-tight">GeoVision</span>
-          <span className="px-2 py-0.5 text-xs font-bold bg-[#1c69d4] text-white rounded-md uppercase tracking-wider">AI</span>
+        <div className="flex-1 flex justify-start">
+          <button onClick={() => window.location.href = '/'} className="flex items-center gap-2 text-sm text-gray-500 hover:text-black transition-colors">
+            <CaretLeft weight="bold" />
+            Home
+          </button>
         </div>
+        <div className="flex-1 flex justify-center">
+          <span className="font-semibold text-lg text-black tracking-tight">GeoVision</span>
+        </div>
+        <div className="flex-1"></div>
       </nav>
 
       {/* Main Content */}
@@ -205,14 +210,10 @@ export default function ChatUI() {
                 </div>
                 <div className="text-sm text-gray-500 mt-4 font-light tracking-wide">{progress.error || progress.detail}</div>
               </div>
-              <div className="flex items-center gap-3 text-xs tracking-[0.2em] uppercase text-black/40">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#1c69d4] animate-pulse" />
-                Pipeline Active
-              </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center text-black/10 transition-opacity duration-500">
-              <Globe size={64} strokeWidth={0.5} className="mb-6 opacity-30" />
+              <Globe size={64} weight="thin" className="mb-6 opacity-30" />
               <div className="font-serif text-2xl tracking-tight opacity-40">GeoVision Workspace</div>
               <div className="text-[10px] uppercase tracking-[0.3em] mt-3 opacity-30 text-black">Awaiting Input</div>
             </div>
@@ -226,7 +227,7 @@ export default function ChatUI() {
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center opacity-70">
-                <Globe size={48} className="text-gray-300 mb-6" strokeWidth={1} />
+                <Globe size={48} weight="light" className="text-gray-300 mb-6" />
                 <h2 className="text-2xl font-bold text-black mb-2">What would you like to explore?</h2>
                 <p className="text-gray-500">Ask about land-use changes anywhere on Earth.</p>
               </div>
@@ -285,7 +286,7 @@ export default function ChatUI() {
                 disabled={!inputValue.trim() || isWaiting}
                 className="p-2 mb-1 mr-1 rounded-lg bg-[#1c69d4] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#0066b1] transition-colors flex-shrink-0"
               >
-                <CornerDownLeft size={18} />
+                <ArrowElbowDownLeft size={18} weight="bold" />
               </button>
             </div>
           </div>

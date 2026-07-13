@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, useScroll } from 'framer-motion';
-import { ArrowUpRight, Sparkles, Copyright } from 'lucide-react';
+import { ArrowUpRight, Sparkle, Copyright } from '@phosphor-icons/react';
 import GlobeOrb from './GlobeOrb';
 import Lenis from 'lenis';
 
@@ -104,8 +104,18 @@ export default function LandingPage({ onStart }) {
       requestAnimationFrame(raf);
     }
     requestAnimationFrame(raf);
-    return () => lenis.destroy();
-  }, [isExiting]);
+    const cleanup = () => {
+      lenis.destroy();
+    };
+
+    // Wake up Render backend
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
+      fetch(`${API_URL}/check-ee`).catch(() => {}); // silent catch
+    } catch(e) {}
+
+    return cleanup;
+  }, []);
 
   const handleStart = () => {
     setIsExiting(true);
@@ -305,7 +315,7 @@ export default function LandingPage({ onStart }) {
               <div className="col-span-1 md:col-span-1">
                 <div className="bento-card bg-white/60 backdrop-blur-md border border-black/5 shadow-2xl shadow-black/5 text-black p-10 md:p-12 rounded-[28px] flex flex-col justify-between min-h-[400px]">
                   <div>
-                    <Sparkles size={24} className="text-[#cc5500] mb-6" />
+                    <Sparkle size={24} className="text-[#cc5500] mb-6" />
                     <h3 className="font-serif text-3xl mb-4 leading-tight">10-Meter<br />Resolution</h3>
                   </div>
                   <p className="text-black/60 font-medium text-sm leading-relaxed max-w-[280px]">
@@ -315,7 +325,7 @@ export default function LandingPage({ onStart }) {
               </div>
 
               {/* Card 2: AI Explanations */}
-              <div className="col-span-1 md:col-span-2">
+              <div className="col-span-1 md:grid-cols-2">
                 <div className="bento-card bg-white/60 backdrop-blur-md border border-black/5 shadow-2xl shadow-black/5 text-black p-10 md:p-12 rounded-[28px] flex flex-col items-center justify-center min-h-[400px]">
                   <h3 className="font-serif text-4xl md:text-5xl text-center mb-6 leading-tight max-w-lg">
                     "AI that explains<br />why it matters."
@@ -365,7 +375,8 @@ export default function LandingPage({ onStart }) {
 
           <div className="mt-32 flex flex-col md:flex-row items-center justify-between text-[10px] uppercase tracking-[0.2em] font-medium text-black/40 gap-4">
             <div className="flex items-center gap-2">
-              <Copyright size={12} /> 2026 GeoVision
+              <Copyright size={14} />
+              <span>2026 GeoVision</span>
             </div>
             <div>Satellite Intelligence Evolved</div>
           </div>
